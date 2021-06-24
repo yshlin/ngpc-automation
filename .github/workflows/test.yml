@@ -15,6 +15,10 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      HOST: localhost
+      PORT: 5678
+
     steps:
     - uses: actions/checkout@v2
     - name: Use Node.js
