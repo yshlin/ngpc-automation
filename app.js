@@ -21,7 +21,7 @@ app.use(bodyParser.urlencoded({extended: false}));
 let clients = [];
 let events = [];
 
-app.get('/api/events/stream', (request, response) => {
+app.get('/events/stream', (request, response) => {
     const headers = {
         'Content-Type': 'text/event-stream',
         'Connection': 'keep-alive',
@@ -48,7 +48,7 @@ app.get('/api/events/stream', (request, response) => {
     console.log(`${clientId} listening to event stream from ${request.header('Origin')}`);
 });
 
-app.post('/api/events', (request, respsonse) => {
+app.post('/events', (request, respsonse) => {
     const newEvent = request.body;
     if (newEvent.hasOwnProperty('type') && newEvent.hasOwnProperty('task') && newEvent.hasOwnProperty('email') && newEvent.type === 'task') {
         console.log(`Adding event of type ${newEvent.task} from ${request.header('Origin')}`);
@@ -60,7 +60,7 @@ app.post('/api/events', (request, respsonse) => {
     }
 });
 
-app.put('/api/events', (request, response) => {
+app.put('/events', (request, response) => {
     const event = request.body;
     if (event.type && event.task && event.type === 'task') {
         console.log(`Clearing events of task ${event.task} from ${request.header('Origin')}`);

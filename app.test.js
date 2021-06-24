@@ -31,7 +31,7 @@ afterAll((done) => {
     server.close(() => done());
 });
 
-test.skip('POST /api/events (live)', (done) => {
+test.skip('POST /events (live)', (done) => {
     postEvents(chunks[0], (res) => {
         res.resume();
         res.on('end', () => {
@@ -41,7 +41,7 @@ test.skip('POST /api/events (live)', (done) => {
     }, liveUrl);
 });
 
-test.skip('PUT /api/events (live)', (done) => {
+test.skip('PUT /events (live)', (done) => {
         let p1 = new Promise((resolve) => putEvents(testData[0].task, resolve, liveUrl));
         let p2 = new Promise((resolve) => putEvents(testData[1].task, resolve, liveUrl));
         let p3 = new Promise((resolve) => putEvents(testData[2].task, resolve, liveUrl));
@@ -51,7 +51,7 @@ test.skip('PUT /api/events (live)', (done) => {
 });
 
 describe('Event stream API', () => {
-    it('POST /api/events', (done) => {
+    it('POST /events', (done) => {
         postEvents(chunks[0], (res) => {
             res.resume();
             res.on('end', () => {
@@ -60,7 +60,7 @@ describe('Event stream API', () => {
             });
         });
     });
-    it('GET /api/events/stream', (done) => {
+    it('GET /events/stream', (done) => {
         let receivedData = [];
         getEventStream((data, events) => {
             receivedData = receivedData.concat(data);
@@ -75,7 +75,7 @@ describe('Event stream API', () => {
         postEvents(chunks[2], () => {
         });
     });
-    it('PUT /api/events', (done) => {
+    it('PUT /events', (done) => {
         let p1 = new Promise((resolve) => putEvents(testData[0].task, resolve));
         let p2 = new Promise((resolve) => putEvents(testData[1].task, resolve));
         let p3 = new Promise((resolve) => putEvents(testData[2].task, resolve));

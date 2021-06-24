@@ -6,7 +6,7 @@ function postEvents(chunk, callback, url= {}) {
     const req = http.request({
         host: url.host ? url.host : process.env.HOST,
         port: url.port ? url.port : process.env.PORT,
-        path: '/api/events',
+        path: '/events',
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -21,7 +21,7 @@ function postEvents(chunk, callback, url= {}) {
 
 function getEventStream(callback) {
     const events = new EventSource(
-        `http://${process.env.HOST}:${process.env.PORT}/api/events/stream`,
+        `http://${process.env.HOST}:${process.env.PORT}/events/stream`,
         {headers: {'Api-Key': process.env.APIKEY}}
     );
 
@@ -52,7 +52,7 @@ function putEvents(task, callback, url={}) {
     const req = http.request({
         host: url.host ? url.host : process.env.HOST,
         port: url.port ? url.port : process.env.PORT,
-        path: '/api/events',
+        path: '/events',
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
