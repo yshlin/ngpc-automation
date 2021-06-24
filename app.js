@@ -4,6 +4,15 @@ const cors = require('cors');
 const {v4: uuid} = require('uuid');
 const app = express();
 
+const auth = (req, res, next) => {
+    if (req.get('Api-Key') === process.env.APIKEY) {
+        next();
+    } else {
+        res.sendStatus(403);
+    }
+}
+
+app.use(auth);
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
@@ -12,7 +21,7 @@ app.use(bodyParser.urlencoded({extended: false}));
 let clients = [];
 let events = [];
 
-app.get('/events/stream', (request, response) => {
+app.get('/api/events/stream', (request, response) => {
     const headers = {
         'Content-Type': 'text/event-stream',
         'Connection': 'keep-alive',
@@ -36,13 +45,13 @@ app.get('/events/stream', (request, response) => {
         // console.log(`${clientId} events stream closed`);
         clients = clients.filter(client => client.id !== clientId);
     });
-    console.log(`${clientId} listening to event stream`);
+    console.log(`${clientId} listening to event stream from ${request.header('Origin')}`);
 });
 
-app.post('/events', (request, respsonse) => {
+app.post('/api/events', (request, respsonse) => {
     const newEvent = request.body;
     if (newEvent.hasOwnProperty('type') && newEvent.hasOwnProperty('task') && newEvent.hasOwnProperty('email') && newEvent.type === 'task') {
-        console.log(`Adding event of type ${newEvent.task}`);
+        console.log(`Adding event of type ${newEvent.task} from ${request.header('Origin')}`);
         events.push(newEvent);
         clients.forEach(client => client.response.write(`data: ${JSON.stringify(newEvent)}\n\n`));
         respsonse.sendStatus(200);
@@ -51,10 +60,10 @@ app.post('/events', (request, respsonse) => {
     }
 });
 
-app.put('/events', (request, response) => {
+app.put('/api/events', (request, response) => {
     const event = request.body;
     if (event.type && event.task && event.type === 'task') {
-        console.log(`Clearing events of task ${event.task}`);
+        console.log(`Clearing events of task ${event.task} from ${request.header('Origin')}`);
         events = events.filter(event => event.task !== event.task);
         response.sendStatus(200);
     } else {

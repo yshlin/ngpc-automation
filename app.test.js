@@ -17,6 +17,7 @@ let testData = [{
 },]
 let chunks = [JSON.stringify(testData[0]), JSON.stringify(testData[1]), JSON.stringify(testData[2])];
 let server;
+let liveUrl = {host: 'localhost', port: 3000};
 
 beforeAll((done) => {
     server = app.listen(process.env.PORT, () => {
@@ -30,18 +31,27 @@ afterAll((done) => {
     server.close(() => done());
 });
 
-test.skip('POST /events live', (done) => {
+test.skip('POST /api/events (live)', (done) => {
     postEvents(chunks[0], (res) => {
         res.resume();
         res.on('end', () => {
             expect(res.complete).toBe(true);
             done();
         });
-    }, {port: 3000});
+    }, liveUrl);
+});
+
+test.skip('PUT /api/events (live)', (done) => {
+        let p1 = new Promise((resolve) => putEvents(testData[0].task, resolve, liveUrl));
+        let p2 = new Promise((resolve) => putEvents(testData[1].task, resolve, liveUrl));
+        let p3 = new Promise((resolve) => putEvents(testData[2].task, resolve, liveUrl));
+        Promise.all([p1, p2, p3]).then(() => {
+            done();
+        });
 });
 
 describe('Event stream API', () => {
-    it('POST /events', (done) => {
+    it('POST /api/events', (done) => {
         postEvents(chunks[0], (res) => {
             res.resume();
             res.on('end', () => {
@@ -50,7 +60,7 @@ describe('Event stream API', () => {
             });
         });
     });
-    it('GET /events/stream', (done) => {
+    it('GET /api/events/stream', (done) => {
         let receivedData = [];
         getEventStream((data, events) => {
             receivedData = receivedData.concat(data);
@@ -65,7 +75,7 @@ describe('Event stream API', () => {
         postEvents(chunks[2], () => {
         });
     });
-    it('PUT /events', (done) => {
+    it('PUT /api/events', (done) => {
         let p1 = new Promise((resolve) => putEvents(testData[0].task, resolve));
         let p2 = new Promise((resolve) => putEvents(testData[1].task, resolve));
         let p3 = new Promise((resolve) => putEvents(testData[2].task, resolve));
