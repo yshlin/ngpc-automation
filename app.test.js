@@ -13,7 +13,8 @@ beforeAll((done) => {
 });
 
 afterAll((done) => {
-    console.log('Events service stopped.')
+    console.log('Events service stopped.');
+    app.stopPinging();
     server.close(() => done());
 });
 

@@ -71,6 +71,15 @@ app.put('/events', (request, response) => {
     }
 });
 
+/**
+ * keeping server alive
+ */
+let intervalId = setInterval(() => {
+    clients.forEach(client => client.response.write(`data: []\n\n`));
+}, 50000);
 
+app.stopPinging = () => {
+    clearInterval(intervalId)
+}
 
 module.exports = app
