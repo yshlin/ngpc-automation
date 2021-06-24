@@ -29,8 +29,21 @@ function waitingTask() {
 }
 
 function runTask(task) {
+    let callback = (code) => {
+        console.log(`child process exited with code ${code}`);
+        putEvents(task, () => {})
+        setState(task);
+        let waiting = waitingTask();
+        if (waiting) {
+            runTask(waiting)
+        }
+    };
     setState(task, 'running');
 
+    if (process.env.READ_ONLY) {
+        callback(1);
+        return;
+    }
     let pyCommand = ['./main.py', `--task="${task}"`];
     if (process.env.DRY_RUN) {
         pyCommand.push('--dry-run')
@@ -43,15 +56,7 @@ function runTask(task) {
     taskProc.stderr.on('data', (data) => {
         console.log(data.toString());
     });
-    taskProc.on('close', (code) => {
-        console.log(`child process exited with code ${code}`);
-        putEvents(task, () => {})
-        setState(task);
-        let waiting = waitingTask();
-        if (waiting) {
-            runTask(waiting)
-        }
-    });
+    taskProc.on('close', callback);
 }
 
 getEventStream((evs) => {

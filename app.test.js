@@ -1,23 +1,9 @@
 const app = require('./app');
 const {postEvents, getEventStream, putEvents} = require('./client-util');
+const {testData, chunks} = require('./test-data');
 
 
-let testData = [{
-    "type": "task",
-    "task": "weeklyPub",
-    "email": "test@example.com",
-}, {
-    "type": "task",
-    "task": "mergePptx",
-    "email": "test@example.com",
-}, {
-    "type": "task",
-    "task": "youtubeSetup",
-    "email": "test@example.com",
-},]
-let chunks = [JSON.stringify(testData[0]), JSON.stringify(testData[1]), JSON.stringify(testData[2])];
 let server;
-let liveUrl = {host: 'localhost', port: 3000};
 
 beforeAll((done) => {
     server = app.listen(process.env.PORT, () => {
@@ -29,25 +15,6 @@ beforeAll((done) => {
 afterAll((done) => {
     console.log('Events service stopped.')
     server.close(() => done());
-});
-
-test.skip('POST /events (live)', (done) => {
-    postEvents(chunks[0], (res) => {
-        res.resume();
-        res.on('end', () => {
-            expect(res.complete).toBe(true);
-            done();
-        });
-    }, liveUrl);
-});
-
-test.skip('PUT /events (live)', (done) => {
-        let p1 = new Promise((resolve) => putEvents(testData[0].task, resolve, liveUrl));
-        let p2 = new Promise((resolve) => putEvents(testData[1].task, resolve, liveUrl));
-        let p3 = new Promise((resolve) => putEvents(testData[2].task, resolve, liveUrl));
-        Promise.all([p1, p2, p3]).then(() => {
-            done();
-        });
 });
 
 describe('Event stream API', () => {

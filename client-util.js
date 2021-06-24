@@ -1,4 +1,5 @@
-const http = require('http');
+const s = (process.env.PORT === '443' ? 's': '');
+const http = require('http' + s);
 const EventSource = require('eventsource');
 
 
@@ -21,7 +22,7 @@ function postEvents(chunk, callback, url= {}) {
 
 function getEventStream(callback) {
     const events = new EventSource(
-        `http://${process.env.HOST}:${process.env.PORT}/events/stream`,
+        `http${s}://${process.env.HOST}:${process.env.PORT}/events/stream`,
         {headers: {'Api-Key': process.env.APIKEY}}
     );
 
@@ -41,7 +42,7 @@ function getEventStream(callback) {
             }
         }
     };
-    console.log('Listen to event stream.')
+    console.log('Listen to event stream.');
 }
 
 function putEvents(task, callback, url={}) {
