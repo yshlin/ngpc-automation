@@ -1,4 +1,4 @@
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -110,7 +110,8 @@ def appendSlides(ppt, pane):
 
 def insertSlides(ppt, pane, before=''):
     pane.send_keys(Keys.HOME)
-    dest = ppt.find_element_by_xpath(f'//Pane[@Name="投影片瀏覽"]//ListItem[@Name="{before}"]')
+    # dest = ppt.find_element_by_xpath(f'//Pane[@Name="投影片瀏覽"]//ListItem[@Name="{before}"]')
+    dest = waitElement(By.XPATH, f'//ListItem[@Name="{before}"]', pane)
     ppt.scroll(dest, dest)
     pane.send_keys(Keys.ARROW_RIGHT)
     pane.send_keys(Keys.DELETE)
@@ -145,8 +146,8 @@ def saveNewSlide(ppt, pane, output):
         cb = sw.find_elements_by_xpath('//Window[@Name="確認另存新檔"]//Button[@Name="是(Y)"]')
         if 0 < len(cb):
             cb[0].click()
-    except NoSuchElementException:
-        pass  # no need to confirm override
+    except (NoSuchElementException, StaleElementReferenceException):
+        print('no need to confirm override')
 
 
 def prepareFolder():
@@ -228,6 +229,14 @@ def findPptx(existingChrome=False):
 
 
 def extractSubject(chrome, doc, existingChrome):
+    # look for local config
+    with open(weeklyConfig.replace('config.json', 'weekly.json'), 'r', encoding='utf-8') as f:
+        config = json.load(f)
+        dt = [int(x) for x in config['日期'].split('/')]
+        sun = getSunday()
+        if dt[0] == sun.month and dt[1] == sun.day:
+            return config['題目']
+    # use final file name on google drive if config not present
     p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pkeys[2], doc)
     return re.sub(r'^(.+)\.(\w+)( \([0-9]+\))?\.pptx$', r'\2', p.get_attribute('Name')).strip()
 
@@ -258,16 +267,25 @@ def downloadPptx(chrome, doc, existingChrome):
 def youtubeSetup(subject, chrome, doc, existingChrome):
     ytSubject = '【週日禮拜】%s《%s》李俊佑牧師' % (getSunday().strftime('%Y.%m.%d'), subject)
 
-    chrome.find_element_by_xpath('//Button[@Name="直播 - YouTube Studio"]').click()
+    if not existingChrome:
+        chrome.find_element_by_xpath('//Button[@Name="直播 - YouTube Studio"]').click()
     doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
-    clink = doc.find_elements_by_xpath('//Hyperlink[@Name="關閉"]')
-    if 0 < len(clink):
-        clink[0].click()
-    doc.find_element_by_xpath('//Button[@Name="編輯"]').click()
-    dialog = waitElement(By.NAME, '編輯設定', chrome)
+    waitElement(By.XPATH, '//Button[@Name="串流設定說明"]', doc)
+    waitElement(By.XPATH, '//Button[@Name="編輯"]', doc).click()
+    dialog = waitElement(By.NAME, '編輯設定', doc)
     t = dialog.find_element_by_xpath('//Group[@AutomationId="textbox" and @Name="新增可描述直播內容的標題"]')
+    t.click()
+    t.send_keys(Keys.CONTROL + 'a')
     t.send_keys(ytSubject)
-    closeWindow(chrome)
+    doc.find_element_by_xpath('//Button[@Name="儲存"]').click()
+    chat = doc.find_element_by_xpath('//Group[@Name="寫點東西..."]')
+    chat.click()
+    chat.send_keys('''【公告】 一、請大家在此留言簽到~
+    二、線上週報: https://ngpc.tw/weekly/
+    三、奉獻表單: https://ngpc.tw/forms/dedication.html''')
+    chat.send_keys(Keys.ENTER)
+    waitElement(By.XPATH, '//Button[@Name="留言動作"]', doc).send_keys(Keys.SPACE)
+    waitElement(By.XPATH, '//ListItem[@Name="將訊息置頂"]', doc).click()
 
 
 def customPresentation(ppt, after=0, before=None):
@@ -295,7 +313,6 @@ def uploadMergedPptx(chrome, doc, existingChrome):
     file.click()
     file.send_keys(Keys.ENTER)
     waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % '自動合併', doc)
-    closeWindow(chrome)
 
 
 def publishDataSheet(chrome, doc, existingChrome):
@@ -304,6 +321,7 @@ def publishDataSheet(chrome, doc, existingChrome):
         p.click()
         p.send_keys(Keys.ENTER)
     doc = waitElement(By.XPATH, '//Document[contains(@Name, "產生器")]', chrome)
+    doc.find_element_by_xpath('//MenuItem[@Name="資料輸入"]')
     doc.find_element_by_xpath('//MenuItem[@Name="檔案"]').click()
     waitElement(By.XPATH, '//MenuItem[@Name="發布到網路 w"]', doc).click()
     d = waitElement(By.XPATH, '//Custom[@Name="發布到網路"]', doc)
@@ -315,7 +333,6 @@ def publishDataSheet(chrome, doc, existingChrome):
     d.find_element_by_xpath('//Button[@Name="關閉"]').click()
     urlBar = chrome.find_element_by_xpath('//Edit[@Name="Address and search bar"]')
     url = urlBar.get_attribute('Value.Value')
-    closeWindow(chrome)
     return re.sub(r'(https://)?docs\.google\.com/spreadsheets/d/(.+)/edit(#gid=[0-9]+)?', r'\2', url)
 
 
@@ -334,19 +351,22 @@ def writeWeeklyConfig(sheetId):
         f.truncate()
 
 
+def sendNotificationEmail(chrome, task, subject, body):
+    urlBar = chrome.find_element_by_xpath('//Edit[@Name="Address and search bar"]')
+    pass
+
+
 pkeys = ['輪播', '.google簡報檔', '講道']
-task = None
 taskChoices = ['weeklyPub', 'mergePptx', 'youtubeSetup']
 weeklyConfig = '../ngpc/models/config.json'
-dryRun = False
 parser = argparse.ArgumentParser(description='NGPC church automation tool.')
-parser.add_argument('--task', action='store', dest=task, default='', required=True,
-                    choices=taskChoices,
+parser.add_argument('--task', action='store', default='', required=True, choices=taskChoices,
                     help='Choose either one of the tasks')
 parser.add_argument('--weekly-config', action='store', dest=weeklyConfig,
                     help='Config path of weeklyPub to write to')
-parser.add_argument('--dry-run', action='store_true', dest=dryRun,
+parser.add_argument('--dry-run', action='store_true',
                     help='Specify if don\'t want to commit result yet')
+
 args = parser.parse_args()
 
 if args.task in taskChoices:
@@ -359,19 +379,27 @@ if args.task in taskChoices:
 
     if 'weeklyPub' == args.task:
         sid = publishDataSheet(*context)
+        closeWindow(context[0])
         writeWeeklyConfig(sid)
         subprocess.run(['npm', 'run', 'prepare'], check=True, shell=True, cwd='../ngpc')
-        if not dryRun:
+        if not args.dry_run:
             subprocess.run(['npm', 'run', 'upload'], check=True, shell=True, cwd='../ngpc')
     elif 'mergePptx' == args.task:
-        downloadPptx(*context)
-        mergePptx(*context)
-        if not dryRun:
+        context2 = downloadPptx(*context)
+        mergePptx(*context2)
+        if not args.dry_run:
             uploadMergedPptx(*context)
+        closeWindow(context[0])
     elif 'youtubeSetup' == args.task:
+        sid = publishDataSheet(*context)
+        writeWeeklyConfig(sid)
+        subprocess.run(['npm', 'run', 'load'], check=True, shell=True, cwd='../ngpc')
         subj = extractSubject(*context)
-        if not dryRun:
+        if not args.dry_run:
             youtubeSetup(subj, *context)
+        closeWindow(context[0])
 
+    # TODO: send email notification
+    # mailto:{email}?subject={subject}&body={body}
     print(f'Finished task: {args.task}')
     root.quit()
