@@ -441,7 +441,7 @@ if args.task in taskChoices:
             f'[系統通知] {taskNames[args.task]} 程序執行完成',
             f'''{taskNames[args.task]} 程序執行成功！
 
-請檢查執行結果；
+請檢查執行結果：
 {resultUrl}''')
     except (TimeoutException, NoSuchElementException):
         sendNotificationEmail(
