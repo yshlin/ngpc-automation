@@ -1,7 +1,7 @@
 const s = (process.env.PORT === '443' ? 's': '');
 const http = require('http' + s);
 const EventSource = require('eventsource');
-
+let confirmedEventReception = false;
 
 function postEvents(chunk, callback, url= {}) {
     const req = http.request({
@@ -31,8 +31,13 @@ function getEventStream(callback) {
         if (!Array.isArray(parsedData)) {
             parsedData = [parsedData];
         }
-        console.log(`Received ${parsedData.length} events`);
-        callback(parsedData, events);
+        if (parsedData.length > 0) {
+            console.log(`Received ${parsedData.length} events`);
+            callback(parsedData, events);
+        } else if (!confirmedEventReception) {
+            console.log('Event reception confirmed.');
+            confirmedEventReception = true;
+        }
     };
 
     events.onerror = function (e) {
