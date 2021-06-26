@@ -1,3 +1,6 @@
+import os
+import time
+
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -121,21 +124,6 @@ def insertSlides(ppt, pane, before=''):
     pane.send_keys('k')
 
 
-def dumpPageSource(driver, file='dump.xml'):
-    with open(file, 'w', encoding='utf-8') as f:
-        f.write(driver.page_source)
-
-
-def closeWindow(win, saveNot=False):
-    win.close_app()
-    # win.find_element_by_xpath('//Button[@Name="關閉"]').click()
-    if saveNot:
-        nsbtn = win.find_elements_by_xpath('//Button[@Name="不要儲存"]')
-        if 0 < len(nsbtn):
-            nsbtn[0].click()
-    win.quit()
-
-
 def saveNewSlide(ppt, pane, output):
     pane.send_keys(Keys.F12)
     sw = ppt.find_element_by_xpath('//Window[@Name="另存新檔"]')
@@ -161,38 +149,8 @@ def prepareFolder():
     ps = folder.find_elements_by_xpath('//ListItem')
 
     mp = partial(matchP, ps)
-    pVals = list(map(mp, pkeys))
+    pVals = list(map(mp, pKeys))
     return folder, pVals
-
-
-def mergePptx(container, pvals, existingChrome):
-    pNames = list(map(lambda x: x.get_attribute('Name'), pvals))
-
-    subject = re.sub(r'^(.+)\.(\w+)( \([0-9]+\))?\.pptx$', r'投影片 \2', pNames[2]).strip()
-    output = re.sub(r'^(.+)_(\w+)\.google簡報檔( \([0-9]+\))?\.pptx$', r'\1_自動合併', pNames[1]).strip()
-
-    ppt3 = launchPpt(pkeys[2], pvals[2], container)
-    p3 = toggleSlideView(ppt3)
-    copyAllSlides(ppt3, p3)
-    closeWindow(ppt3)
-    switchWindow(container)
-
-    ppt2 = launchPpt(pkeys[1], pvals[1], container)
-    p2 = toggleSlideView(ppt2)
-    insertSlides(ppt2, p2, subject)
-    copyAllSlides(ppt2, p2)
-    closeWindow(ppt2, True)
-    switchWindow(container)
-
-    ppt1 = launchPpt(pkeys[0], pvals[0], container)
-    p1 = toggleSlideView(ppt1)
-    appendSlides(ppt1, p1)
-    customPresentation(ppt1, 10)
-    saveNewSlide(ppt1, p1, output)
-    closeWindow(ppt1)
-    switchWindow(container)
-
-    # closeWindow(container)
 
 
 def findPptx(existingChrome=False):
@@ -228,30 +186,17 @@ def findPptx(existingChrome=False):
     return chrome, doc, existingChrome
 
 
-def extractSubject(chrome, doc, existingChrome):
-    # look for local config
-    with open(weeklyConfig.replace('config.json', 'weekly.json'), 'r', encoding='utf-8') as f:
-        config = json.load(f)
-        dt = [int(x) for x in config['日期'].split('/')]
-        sun = getSunday()
-        if dt[0] == sun.month and dt[1] == sun.day:
-            return config['題目']
-    # use final file name on google drive if config not present
-    p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pkeys[2], doc)
-    return re.sub(r'^(.+)\.(\w+)( \([0-9]+\))?\.pptx$', r'\2', p.get_attribute('Name')).strip()
-
-
 def downloadPptx(chrome, doc, existingChrome):
     if not existingChrome:
-        p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pkeys[0], doc)
+        p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pKeys[0], doc)
         p.click()
         p.send_keys(Keys.SHIFT + Keys.F10)
         waitElement(By.XPATH, '//MenuItem[contains(@Name, "下載")]', doc).click()
-        p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pkeys[1], doc)
+        p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pKeys[1], doc)
         p.click()
         p.send_keys(Keys.SHIFT + Keys.F10)
         waitElement(By.XPATH, '//MenuItem[contains(@Name, "下載")]', doc).click()
-        p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pkeys[2], doc)
+        p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pKeys[2], doc)
         p.click()
         p.send_keys(Keys.SHIFT + Keys.F10)
         waitElement(By.XPATH, '//MenuItem[contains(@Name, "下載")]', doc).click()
@@ -260,32 +205,36 @@ def downloadPptx(chrome, doc, existingChrome):
     # dl = chrome.find_elements_by_xpath('//Document[@Name="Downloads"]//DataItem[@AutomationId="title-area"]')
     dl = chrome.find_elements_by_xpath('/Pane/Pane/Pane/Button[contains(@Name, ".pptx")]')
     mp = partial(matchP, dl)
-    pVals = list(map(mp, pkeys))
+    pVals = list(map(mp, pKeys))
     return chrome, pVals, existingChrome
 
 
-def youtubeSetup(subject, chrome, doc, existingChrome):
-    ytSubject = '【週日禮拜】%s《%s》李俊佑牧師' % (getSunday().strftime('%Y.%m.%d'), subject)
+def mergePptx(container, pvals, existingChrome):
+    pNames = list(map(lambda x: x.get_attribute('Name'), pvals))
 
-    if not existingChrome:
-        chrome.find_element_by_xpath('//Button[@Name="直播 - YouTube Studio"]').click()
-    doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
-    waitElement(By.XPATH, '//Button[@Name="串流設定說明"]', doc)
-    waitElement(By.XPATH, '//Button[@Name="編輯"]', doc).click()
-    dialog = waitElement(By.NAME, '編輯設定', doc)
-    t = dialog.find_element_by_xpath('//Group[@AutomationId="textbox" and @Name="新增可描述直播內容的標題"]')
-    t.click()
-    t.send_keys(Keys.CONTROL + 'a')
-    t.send_keys(ytSubject)
-    doc.find_element_by_xpath('//Button[@Name="儲存"]').click()
-    chat = doc.find_element_by_xpath('//Group[@Name="寫點東西..."]')
-    chat.click()
-    chat.send_keys('''【公告】 一、請大家在此留言簽到~
-    二、線上週報: https://ngpc.tw/weekly/
-    三、奉獻表單: https://ngpc.tw/forms/dedication.html''')
-    chat.send_keys(Keys.ENTER)
-    waitElement(By.XPATH, '//Button[@Name="留言動作"]', doc).send_keys(Keys.SPACE)
-    waitElement(By.XPATH, '//ListItem[@Name="將訊息置頂"]', doc).click()
+    subject = re.sub(r'^(.+)\.(\w+)( \([0-9]+\))?\.pptx$', r'投影片 \2', pNames[2]).strip()
+    output = re.sub(r'^(.+)_(\w+)\.google簡報檔( \([0-9]+\))?\.pptx$', r'\1_自動合併', pNames[1]).strip()
+
+    ppt3 = launchPpt(pKeys[2], pvals[2], container)
+    p3 = toggleSlideView(ppt3)
+    copyAllSlides(ppt3, p3)
+    closeWindow(ppt3)
+    switchWindow(container)
+
+    ppt2 = launchPpt(pKeys[1], pvals[1], container)
+    p2 = toggleSlideView(ppt2)
+    insertSlides(ppt2, p2, subject)
+    copyAllSlides(ppt2, p2)
+    closeWindow(ppt2, True)
+    switchWindow(container)
+
+    ppt1 = launchPpt(pKeys[0], pvals[0], container)
+    p1 = toggleSlideView(ppt1)
+    appendSlides(ppt1, p1)
+    customPresentation(ppt1, 10)
+    saveNewSlide(ppt1, p1, output)
+    closeWindow(ppt1)
+    switchWindow(container)
 
 
 def customPresentation(ppt, after=0, before=None):
@@ -336,6 +285,19 @@ def publishDataSheet(chrome, doc, existingChrome):
     return re.sub(r'(https://)?docs\.google\.com/spreadsheets/d/(.+)/edit(#gid=[0-9]+)?', r'\2', url)
 
 
+def extractSubject(chrome, doc, existingChrome):
+    # look for local config
+    with open(weeklyConfig.replace('config.json', 'weekly.json'), 'r', encoding='utf-8') as f:
+        config = json.load(f)
+        dt = [int(x) for x in config['日期'].split('/')]
+        sun = getSunday()
+        if dt[0] == sun.month and dt[1] == sun.day:
+            return config['題目']
+    # use final file name on google drive if config not present
+    p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pKeys[2], doc)
+    return re.sub(r'^(.+)\.(\w+)( \([0-9]+\))?\.pptx$', r'\2', p.get_attribute('Name')).strip()
+
+
 def getSunday():
     today = datetime.date.today()
     dow = (today.weekday() + 1) % 7
@@ -351,17 +313,92 @@ def writeWeeklyConfig(sheetId):
         f.truncate()
 
 
-def sendNotificationEmail(chrome, task, subject, body):
+def youtubeSetup(subject, chrome, doc, existingChrome):
+    ytSubject = '【週日禮拜】%s《%s》李俊佑牧師' % (getSunday().strftime('%Y.%m.%d'), subject)
+
+    if not existingChrome:
+        chrome.find_element_by_xpath('//Button[@Name="直播 - YouTube Studio"]').click()
+    doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
+    waitElement(By.XPATH, '//Button[@Name="串流設定說明"]', doc)
+    waitElement(By.XPATH, '//Button[@Name="編輯"]', doc).click()
+    dialog = waitElement(By.NAME, '編輯設定', doc)
+    t = dialog.find_element_by_xpath('//Group[@AutomationId="textbox" and @Name="新增可描述直播內容的標題"]')
+    if t.get_attribute('Value.Value') != ytSubject:
+        t.click()
+        t.send_keys(Keys.CONTROL + 'a')
+        t.send_keys(ytSubject)
+        doc.find_element_by_xpath('//Button[@Name="儲存"]').click()
+    else:
+        # Cancel if no change made
+        doc.find_element_by_xpath('//Button[@Name="取消"]').click()
+
+    existing = 1
+    try:
+        # Remove existing pin if exists
+        dots = doc.find_element_by_xpath('//Button[@Name="留言動作"]')
+        dots.send_keys(Keys.SPACE)
+        waitElement(By.XPATH, '//ListItem[@Name="取消置頂訊息"]', doc).click()
+        dots.send_keys(Keys.SPACE)
+        waitElement(By.XPATH, '//ListItem[@Name="移除"]', doc).click()
+        existing += 1
+    except NoSuchElementException:
+        print('No existing pin')
+
+    chat = doc.find_element_by_xpath('//Group[@Name="寫點東西..."]')
+    chat.click()
+    chat.send_keys('''【公告】 一、請大家在此留言簽到~
+    二、線上週報: https://ngpc.tw/weekly/
+    三、奉獻表單: https://ngpc.tw/forms/dedication.html''')
+    chat.send_keys(Keys.ENTER)
+    waitElement(By.XPATH, f'//Button[@Name="留言動作"][{existing}]', doc).send_keys(Keys.SPACE)
+    waitElement(By.XPATH, '//ListItem[@Name="將訊息置頂"]', doc).click()
+
+
+def sendNotificationEmail(chrome, email, subject, body, ccadmin=False):
     urlBar = chrome.find_element_by_xpath('//Edit[@Name="Address and search bar"]')
-    pass
+    cc = f'&cc={os.environ["ADMIN"]}' if ccadmin and 'ADMIN' in os.environ else ''
+    urlBar.click()
+    urlBar.send_keys(f'https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&to={email}&su={subject}&body={body}{cc}')
+    # urlBar.send_keys(f'mailto:{email}?subject={subject}&body={body}{cc}')
+    urlBar.send_keys(Keys.ENTER)
+    waitElement(By.XPATH, '//Document[@Name="撰寫郵件 - ngpc0706@gmail.com - Gmail"]', chrome).send_keys(
+        Keys.CONTROL + Keys.ENTER)
+    time.sleep(5)
 
 
-pkeys = ['輪播', '.google簡報檔', '講道']
-taskChoices = ['weeklyPub', 'mergePptx', 'youtubeSetup']
+def getUrl(chrome, doc, existingChrome):
+    urlBar = chrome.find_element_by_xpath('//Edit[@Name="Address and search bar"]')
+    return urlBar.get_attribute('Value.Value')
+
+
+def dumpPageSource(driver, file='dump.xml'):
+    with open(file, 'w', encoding='utf-8') as f:
+        f.write(driver.page_source)
+
+
+def closeWindow(win, saveNot=False):
+    win.close_app()
+    # win.find_element_by_xpath('//Button[@Name="關閉"]').click()
+    if saveNot:
+        nsBtn = win.find_elements_by_xpath('//Button[@Name="不要儲存"]')
+        if 0 < len(nsBtn):
+            nsBtn[0].click()
+    win.quit()
+
+
+taskNames = {
+    'weeklyPub': '發佈線上週報',
+    'mergePptx': '合併主日投影片',
+    'youtubeSetup': '更新Youtube直播設定',
+}
+pKeys = ['輪播', '自動產生.google簡報檔', '講道']
+taskChoices = taskNames.keys()
 weeklyConfig = '../ngpc/models/config.json'
 parser = argparse.ArgumentParser(description='NGPC church automation tool.')
 parser.add_argument('--task', action='store', default='', required=True, choices=taskChoices,
                     help='Choose either one of the tasks')
+parser.add_argument('--email', action='store', required=True,
+                    help='Email to send notification to')
 parser.add_argument('--weekly-config', action='store', dest=weeklyConfig,
                     help='Config path of weeklyPub to write to')
 parser.add_argument('--dry-run', action='store_true',
@@ -376,30 +413,48 @@ if args.task in taskChoices:
     d1 = root.find_element_by_name('桌面 1')
     d1.send_keys(Keys.COMMAND + 'd')
     context = findPptx()
+    try:
+        resultUrl = ''
+        if 'weeklyPub' == args.task:
+            sid = publishDataSheet(*context)
+            writeWeeklyConfig(sid)
+            subprocess.run(['npm', 'run', 'prepare'], check=True, shell=True, cwd='../ngpc')
+            if not args.dry_run:
+                subprocess.run(['npm', 'run', 'upload'], check=True, shell=True, cwd='../ngpc')
+            resultUrl = 'https://ngpc.tw/weekly/'
+        elif 'mergePptx' == args.task:
+            context2 = downloadPptx(*context)
+            mergePptx(*context2)
+            if not args.dry_run:
+                uploadMergedPptx(*context)
+            resultUrl = getUrl(*context)
+        elif 'youtubeSetup' == args.task:
+            sid = publishDataSheet(*context)
+            writeWeeklyConfig(sid)
+            subprocess.run(['npm', 'run', 'load'], check=True, shell=True, cwd='../ngpc')
+            subj = extractSubject(*context)
+            if not args.dry_run:
+                youtubeSetup(subj, *context)
+            resultUrl = getUrl(*context)
+        sendNotificationEmail(
+            context[0], args.email,
+            f'[系統通知] {taskNames[args.task]} 程序執行完成',
+            f'''{taskNames[args.task]} 程序執行成功！
 
-    if 'weeklyPub' == args.task:
-        sid = publishDataSheet(*context)
-        closeWindow(context[0])
-        writeWeeklyConfig(sid)
-        subprocess.run(['npm', 'run', 'prepare'], check=True, shell=True, cwd='../ngpc')
-        if not args.dry_run:
-            subprocess.run(['npm', 'run', 'upload'], check=True, shell=True, cwd='../ngpc')
-    elif 'mergePptx' == args.task:
-        context2 = downloadPptx(*context)
-        mergePptx(*context2)
-        if not args.dry_run:
-            uploadMergedPptx(*context)
-        closeWindow(context[0])
-    elif 'youtubeSetup' == args.task:
-        sid = publishDataSheet(*context)
-        writeWeeklyConfig(sid)
-        subprocess.run(['npm', 'run', 'load'], check=True, shell=True, cwd='../ngpc')
-        subj = extractSubject(*context)
-        if not args.dry_run:
-            youtubeSetup(subj, *context)
-        closeWindow(context[0])
-
-    # TODO: send email notification
-    # mailto:{email}?subject={subject}&body={body}
+請檢查執行結果；
+{resultUrl}''')
+    except (TimeoutException, NoSuchElementException):
+        sendNotificationEmail(
+            context[0], args.email,
+            f'[系統錯誤通知] {taskNames[args.task]} 程序執行失敗',
+            f'{taskNames[args.task]} 程序執行時間超過預期，因此自動中斷，煩請再試一次',
+            True)
+    except subprocess.CalledProcessError:
+        sendNotificationEmail(
+            context[0], args.email,
+            f'[系統錯誤通知] {taskNames[args.task]} 程序執行失敗',
+            f'{taskNames[args.task]} 程序執行期間發現並無新的更動需要更新，因此自動中斷，煩請檢查要更新的內容再試一次',
+            True)
+    closeWindow(context[0])
     print(f'Finished task: {args.task}')
     root.quit()
