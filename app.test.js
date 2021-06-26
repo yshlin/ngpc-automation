@@ -1,5 +1,5 @@
 const app = require('./app');
-const {postEvents, getEventStream, putEvents} = require('./client-util');
+const {postEvents, getEventStream, putEvents, clientReset} = require('./client-util');
 const {testData, chunks} = require('./test-data');
 
 
@@ -30,7 +30,7 @@ describe('Event stream API', () => {
     });
     it('GET /events/stream', (done) => {
         let receivedData = [];
-        getEventStream((data, events) => {
+        const events = getEventStream((data) => {
             receivedData = receivedData.concat(data);
             if (3 === receivedData.length) {
                 events.close();
@@ -48,7 +48,7 @@ describe('Event stream API', () => {
         let p2 = new Promise((resolve) => putEvents(testData[1].task, resolve));
         let p3 = new Promise((resolve) => putEvents(testData[2].task, resolve));
         Promise.all([p1, p2, p3]).then(() => {
-            getEventStream((data, events) => {
+            const events = getEventStream((data) => {
                 events.close();
                 expect(data).toEqual([])
                 done();

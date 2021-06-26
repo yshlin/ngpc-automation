@@ -1,7 +1,7 @@
 const s = (process.env.PORT === '443' ? 's': '');
 const http = require('http' + s);
 const EventSource = require('eventsource');
-let confirmedEventReception = false;
+
 
 function postEvents(chunk, callback, url= {}) {
     const req = http.request({
@@ -26,6 +26,11 @@ function getEventStream(callback) {
         {headers: {'Api-Key': process.env.APIKEY}}
     );
 
+    events.onopen = () => {
+        console.log('Event stream open.');
+        events.confirmedEventReception = false;
+    }
+
     events.onmessage = (e) => {
         let parsedData = JSON.parse(e.data);
         if (!Array.isArray(parsedData)) {
@@ -33,11 +38,13 @@ function getEventStream(callback) {
         }
         if (parsedData.length > 0) {
             console.log(`Received ${parsedData.length} events`);
-            callback(parsedData, events);
-        } else if (!confirmedEventReception) {
+            callback(parsedData);
+        } else if (!events.confirmedEventReception) {
+            // only callback on first empty event response to confirm reception
             console.log('Event reception confirmed.');
-            confirmedEventReception = true;
+            callback(parsedData);
         }
+        events.confirmedEventReception = true;
     };
 
     events.onerror = function (e) {
@@ -48,6 +55,7 @@ function getEventStream(callback) {
         }
     };
     console.log('Listen to event stream.');
+    return events;
 }
 
 function putEvents(task, callback, url={}) {
@@ -70,5 +78,6 @@ function putEvents(task, callback, url={}) {
     req.end();
     console.log('PUT request sent')
 }
+
 
 module.exports = {postEvents, getEventStream, putEvents}

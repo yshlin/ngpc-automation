@@ -59,7 +59,7 @@ function runTask(ev) {
     taskProc.on('close', callback);
 }
 
-getEventStream((evs) => {
+const events = getEventStream((evs) => {
     for (const ev of evs) {
         if (ev.type !== 'task' || !['weeklyPub', 'mergePptx', 'youtubeSetup'].includes(ev.task)) {
             console.log('Unsupported event');
@@ -74,4 +74,9 @@ getEventStream((evs) => {
             runTask(ev);
         }
     }
+});
+
+process.on('SIGINT', () => {
+    console.log('Event stream closed.');
+    events.close();
 });
