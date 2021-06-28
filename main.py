@@ -1,6 +1,5 @@
 import os
 import time
-
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -13,6 +12,7 @@ from functools import partial
 import argparse
 import json
 import subprocess
+import urllib.parse
 
 
 def waitElement(by, query, driver=None):
@@ -354,7 +354,33 @@ def youtubeSetup(subject, chrome, doc, existingChrome):
     waitElement(By.XPATH, '//ListItem[@Name="將訊息置頂"]', doc).click()
 
 
+def syncHymnsDb(existingChrome=False):
+    if not existingChrome:
+        c = d1.find_element_by_name('南園教會 (NGPC) - Chrome')
+        c.click()
+        c.send_keys(Keys.ENTER)
+
+    cWin = waitElement(By.XPATH, '//Pane[@ClassName="Chrome_WidgetWin_1"]')
+    chrome = getDriverFromWin(cWin)
+    if not existingChrome:
+        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板 - Google 雲端硬碟"]').click()
+        doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
+        p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % '詩歌資料庫', doc)
+        p.click()
+        p.send_keys(Keys.ENTER)
+    doc = waitElement(By.XPATH, '//Document[contains(@Name, "詩歌資料庫")]', chrome)
+    waitElement(By.XPATH, '//MenuItem[@Name="資料匯入"]', doc).click()
+    waitElement(By.XPATH, '//MenuItem[@Name="從過去影音檔案匯入"]', doc).click()
+    waitElement(By.XPATH, '//Button[@Name="確定"]', doc).click()
+    return chrome, doc, existingChrome
+
+
 def sendNotificationEmail(chrome, email, subject, body, ccadmin=False):
+    if chrome is None:
+        print('No browser context found, unable to send email.')
+        return
+    subject = urllib.parse.quote_plus(subject)
+    body = urllib.parse.quote_plus(body)
     urlBar = chrome.find_element_by_xpath('//Edit[@Name="Address and search bar"]')
     cc = f'&cc={os.environ["ADMIN"]}' if ccadmin and 'ADMIN' in os.environ else ''
     urlBar.click()
@@ -390,6 +416,7 @@ taskNames = {
     'weeklyPub': '發佈線上週報',
     'mergePptx': '合併主日投影片',
     'youtubeSetup': '更新Youtube直播設定',
+    'hymnsDbSync': '更新詩歌資料庫',
 }
 pKeys = ['輪播', '自動產生.google簡報檔', '講道']
 taskChoices = taskNames.keys()
@@ -412,10 +439,11 @@ if args.task in taskChoices:
     root = launchRoot()
     d1 = root.find_element_by_name('桌面 1')
     d1.send_keys(Keys.COMMAND + 'd')
-    context = findPptx()
+    context = None
     try:
         resultUrl = ''
         if 'weeklyPub' == args.task:
+            context = findPptx()
             sid = publishDataSheet(*context)
             writeWeeklyConfig(sid)
             subprocess.run(['npm', 'run', 'prepare'], check=True, shell=True, cwd='../ngpc')
@@ -423,12 +451,14 @@ if args.task in taskChoices:
                 subprocess.run(['npm', 'run', 'upload'], check=True, shell=True, cwd='../ngpc')
             resultUrl = 'https://ngpc.tw/weekly/'
         elif 'mergePptx' == args.task:
+            context = findPptx()
             context2 = downloadPptx(*context)
             mergePptx(*context2)
             if not args.dry_run:
                 uploadMergedPptx(*context)
             resultUrl = getUrl(*context)
         elif 'youtubeSetup' == args.task:
+            context = findPptx()
             sid = publishDataSheet(*context)
             writeWeeklyConfig(sid)
             subprocess.run(['npm', 'run', 'load'], check=True, shell=True, cwd='../ngpc')
@@ -436,24 +466,24 @@ if args.task in taskChoices:
             if not args.dry_run:
                 youtubeSetup(subj, *context)
             resultUrl = getUrl(*context)
+        elif 'hymnsDbSync' == args.task:
+            context = syncHymnsDb()
+            resultUrl = getUrl(*context)
         sendNotificationEmail(
             context[0], args.email,
-            f'[系統通知] {taskNames[args.task]} 程序執行完成',
-            f'''{taskNames[args.task]} 程序執行成功！
-
-請檢查執行結果：
-{resultUrl}''')
+            f'【系統通知】 {taskNames[args.task]} 程序執行完成',
+            f'''{taskNames[args.task]} 程序執行成功！\n\n請檢查執行結果：\n{resultUrl}''')
     except (TimeoutException, NoSuchElementException):
         sendNotificationEmail(
             context[0], args.email,
-            f'[系統錯誤通知] {taskNames[args.task]} 程序執行失敗',
-            f'{taskNames[args.task]} 程序執行時間超過預期，因此自動中斷，煩請再試一次',
+            f'【系統錯誤通知】 {taskNames[args.task]} 程序執行失敗',
+            f'{taskNames[args.task]} 程序執行時間超過預期，\n因此自動中斷，煩請再試一次',
             True)
     except subprocess.CalledProcessError:
         sendNotificationEmail(
             context[0], args.email,
-            f'[系統錯誤通知] {taskNames[args.task]} 程序執行失敗',
-            f'{taskNames[args.task]} 程序執行期間發現並無新的更動需要更新，因此自動中斷，煩請檢查要更新的內容再試一次',
+            f'【系統錯誤通知】 {taskNames[args.task]} 程序執行失敗',
+            f'{taskNames[args.task]} 程序執行期間發現並無新的更動需要更新，\n因此自動中斷，煩請檢查要更新的內容再試一次',
             True)
     closeWindow(context[0])
     print(f'Finished task: {args.task}')

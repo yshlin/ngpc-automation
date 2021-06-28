@@ -61,7 +61,7 @@ function runTask(ev) {
 
 const events = getEventStream((evs) => {
     for (const ev of evs) {
-        if (ev.type !== 'task' || !['weeklyPub', 'mergePptx', 'youtubeSetup'].includes(ev.task)) {
+        if (ev.type !== 'task' || !['hymnsDbSync', 'weeklyPub', 'mergePptx', 'youtubeSetup'].includes(ev.task)) {
             console.log('Unsupported event');
             continue;
         }

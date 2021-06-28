@@ -1,6 +1,7 @@
 const s = (process.env.PORT === '443' ? 's': '');
 const http = require('http' + s);
 const EventSource = require('eventsource');
+require('log-timestamp');
 
 
 function postEvents(chunk, callback, url= {}) {
