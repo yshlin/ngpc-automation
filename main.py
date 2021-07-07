@@ -13,6 +13,10 @@ import argparse
 import json
 import subprocess
 import urllib.parse
+import locale
+
+
+locale.setlocale(locale.LC_CTYPE, 'chinese')
 
 
 def waitElement(by, query, driver=None):
@@ -114,7 +118,8 @@ def appendSlides(ppt, pane):
 def insertSlides(ppt, pane, before=''):
     pane.send_keys(Keys.HOME)
     # dest = ppt.find_element_by_xpath(f'//Pane[@Name="投影片瀏覽"]//ListItem[@Name="{before}"]')
-    dest = waitElement(By.XPATH, f'//ListItem[@Name="{before}"]', pane)
+    print(before)
+    dest = waitElement(By.XPATH, f'//ListItem[contains(@Name, "{before}")]', pane)
     ppt.scroll(dest, dest)
     pane.send_keys(Keys.ARROW_RIGHT)
     pane.send_keys(Keys.DELETE)
@@ -231,7 +236,7 @@ def mergePptx(container, pvals, existingChrome):
     ppt1 = launchPpt(pKeys[0], pvals[0], container)
     p1 = toggleSlideView(ppt1)
     appendSlides(ppt1, p1)
-    customPresentation(ppt1, 10)
+    customPresentation(ppt1, 11)
     saveNewSlide(ppt1, p1, output)
     closeWindow(ppt1)
     switchWindow(container)
@@ -292,7 +297,7 @@ def extractSubject(chrome, doc, existingChrome):
         dt = [int(x) for x in config['日期'].split('/')]
         sun = getSunday()
         if dt[0] == sun.month and dt[1] == sun.day:
-            return config['題目']
+            return config['題目'], config['講員']
     # use final file name on google drive if config not present
     p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pKeys[2], doc)
     return re.sub(r'^(.+)\.(\w+)( \([0-9]+\))?\.pptx$', r'\2', p.get_attribute('Name')).strip()
@@ -304,6 +309,12 @@ def getSunday():
     return today + datetime.timedelta((7 - dow) % 7)
 
 
+def getThursday():
+    today = datetime.date.today()
+    dow = (today.weekday() + 1) % 7
+    return today + datetime.timedelta((4 - dow) % 7)
+
+
 def writeWeeklyConfig(sheetId):
     with open(weeklyConfig, 'r+') as f:
         config = json.load(f)
@@ -313,7 +324,48 @@ def writeWeeklyConfig(sheetId):
         f.truncate()
 
 
-def youtubeSetup(subject, chrome, doc, existingChrome):
+def youtubeSetup(subject, preach, chrome, doc, existingChrome):
+    scheduleYoutube(subject, preach, '週日禮拜', getSunday(), '上午10:30', chrome, doc, existingChrome)
+    scheduleYoutube(subject, preach, '禱告會', getThursday(), '下午8:00', chrome, doc, existingChrome)
+
+
+def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrome):
+    if not existingChrome:
+        chrome.find_element_by_xpath('//Button[@Name="直播 - YouTube Studio"]').click()
+    doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
+    waitElement(By.XPATH, '//Button[@Name="安排直播時間"]', doc).click()
+    waitElement(By.XPATH, '//ListItem[contains(@Name,"Video thumbnail.")]', doc).click()
+    waitElement(By.XPATH, '//ListItem[contains(@Name,"Video thumbnail.") and contains(@Name, "%s")]' % key, doc).click()
+    doc.find_element_by_xpath('//Button[@Name="沿用設定"]').click()
+    if key == '週日禮拜':
+        t = waitElement(By.XPATH, '//Group[@AutomationId="title-input"]//Edit', doc)
+        ytSubject = '【週日禮拜】%s《%s》%s牧師' % (date.strftime('%Y.%m.%d'), subject, preach)
+        t.click()
+        t.send_keys(Keys.CONTROL + 'a')
+        t.send_keys(ytSubject)
+    waitElement(By.XPATH, '//MenuItem[contains(@Name, "隱私權")]', doc).click()
+    waitElement(By.XPATH, '//ListItem[@Name="不公開 知道連結的使用者才能觀賞"]', doc).click()
+    waitElement(By.XPATH, '//Group[@AutomationId="date-input"]', doc).click()
+    d = waitElement(By.XPATH, '//Group[@Name="輸入日期"]//Edit', doc)
+    d.send_keys(Keys.CONTROL + 'a')
+    d.send_keys(date.strftime('%Y年%m月%d日'))
+    d.send_keys(Keys.ENTER)
+    waitElement(By.XPATH, '//Group[@AutomationId="input"][@Name=""]', doc).click()
+    waitElement(By.XPATH, '//ListItem[@Name="%s"]' % time, doc).click()
+    doc.find_element_by_xpath('//Button[@Name="建立"]').click()
+    if key == '週日禮拜':
+        doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
+        chat = waitElement(By.XPATH, '//Group[@Name="寫點東西..."]', doc)
+        chat.click()
+        chat.send_keys('''【公告】 一、請大家在此留言簽到~
+        二、線上週報: https://ngpc.tw/weekly/
+        三、奉獻表單: https://ngpc.tw/forms/dedication.html''')
+        chat.send_keys(Keys.ENTER)
+        waitElement(By.XPATH, f'//Button[@Name="留言動作"]', doc).send_keys(Keys.SPACE)
+        waitElement(By.XPATH, '//ListItem[@Name="將訊息置頂"]', doc).click()
+
+
+def legacyYoutubeSetup(subject, chrome, doc, existingChrome):
     ytSubject = '【週日禮拜】%s《%s》李俊佑牧師' % (getSunday().strftime('%Y.%m.%d'), subject)
 
     if not existingChrome:
@@ -375,9 +427,28 @@ def syncHymnsDb(existingChrome=False):
     return chrome, doc, existingChrome
 
 
+def setupWindows(screen, existingChrome=False):
+    print(screen)
+    if not existingChrome:
+        c = d1.find_element_by_name('南園教會 (NGPC) - Chrome')
+        c.click()
+        c.send_keys(Keys.ENTER)
+
+    cWin = waitElement(By.XPATH, '//Pane[@ClassName="Chrome_WidgetWin_1"]')
+    print(cWin.size)
+    chrome = getDriverFromWin(cWin)
+    # chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板 - Google 雲端硬碟"]').click()
+    # doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
+    cWin.set_window_size(round(screen['width'] / 3), round(screen['height'] / 2))
+    cWin.set_window_position(round(screen['width'] * 2 / 3), 0)
+
+
 def sendNotificationEmail(chrome, email, subject, body, ccadmin=False):
     if chrome is None:
         print('No browser context found, unable to send email.')
+        return
+    if email is None or email == '':
+        print('No email recipient specified.')
         return
     subject = urllib.parse.quote_plus(subject)
     body = urllib.parse.quote_plus(body)
@@ -424,7 +495,7 @@ weeklyConfig = '../ngpc/models/config.json'
 parser = argparse.ArgumentParser(description='NGPC church automation tool.')
 parser.add_argument('--task', action='store', default='', required=True, choices=taskChoices,
                     help='Choose either one of the tasks')
-parser.add_argument('--email', action='store', required=True,
+parser.add_argument('--email', action='store', default='',
                     help='Email to send notification to')
 parser.add_argument('--weekly-config', action='store', dest=weeklyConfig,
                     help='Config path of weeklyPub to write to')
@@ -462,29 +533,33 @@ if args.task in taskChoices:
             sid = publishDataSheet(*context)
             writeWeeklyConfig(sid)
             subprocess.run(['npm', 'run', 'load'], check=True, shell=True, cwd='../ngpc')
-            subj = extractSubject(*context)
+            subj, prch = extractSubject(*context)
             if not args.dry_run:
-                youtubeSetup(subj, *context)
+                youtubeSetup(subj, prch, *context)
             resultUrl = getUrl(*context)
         elif 'hymnsDbSync' == args.task:
             context = syncHymnsDb()
             resultUrl = getUrl(*context)
+        # elif 'liveSetup' == args.task:
+        #     setupWindows(d1.size)
         sendNotificationEmail(
             context[0], args.email,
             f'【系統通知】 {taskNames[args.task]} 程序執行完成',
             f'''{taskNames[args.task]} 程序執行成功！\n\n請檢查執行結果：\n{resultUrl}''')
-    except (TimeoutException, NoSuchElementException):
+    except (TimeoutException, NoSuchElementException) as e:
         sendNotificationEmail(
             context[0], args.email,
             f'【系統錯誤通知】 {taskNames[args.task]} 程序執行失敗',
             f'{taskNames[args.task]} 程序執行時間超過預期，\n因此自動中斷，煩請再試一次',
             True)
-    except subprocess.CalledProcessError:
+        raise e
+    except subprocess.CalledProcessError as e:
         sendNotificationEmail(
             context[0], args.email,
             f'【系統錯誤通知】 {taskNames[args.task]} 程序執行失敗',
             f'{taskNames[args.task]} 程序執行期間發現並無新的更動需要更新，\n因此自動中斷，煩請檢查要更新的內容再試一次',
             True)
+        raise e
     closeWindow(context[0])
     print(f'Finished task: {args.task}')
     root.quit()
