@@ -326,6 +326,11 @@ def writeWeeklyConfig(sheetId):
 
 def youtubeSetup(subject, preach, chrome, doc, existingChrome):
     scheduleYoutube(subject, preach, '週日禮拜', getSunday(), '上午10:30', chrome, doc, existingChrome)
+    if not existingChrome:
+        closeWindow(chrome)
+        c = d1.find_element_by_name('南園教會 (NGPC) - Chrome')
+        c.click()
+        c.send_keys(Keys.ENTER)
     scheduleYoutube(subject, preach, '禱告會', getThursday(), '下午8:00', chrome, doc, existingChrome)
 
 
