@@ -118,7 +118,7 @@ def appendSlides(ppt, pane):
 def insertSlides(ppt, pane, before=''):
     pane.send_keys(Keys.HOME)
     # dest = ppt.find_element_by_xpath(f'//Pane[@Name="投影片瀏覽"]//ListItem[@Name="{before}"]')
-    print(before)
+    # dest = waitElement(By.XPATH, f'//ListItem[@Name="{before}"]', pane)
     dest = waitElement(By.XPATH, f'//ListItem[contains(@Name, "{before}")]', pane)
     ppt.scroll(dest, dest)
     pane.send_keys(Keys.ARROW_RIGHT)
@@ -205,10 +205,11 @@ def downloadPptx(chrome, doc, existingChrome):
         p.click()
         p.send_keys(Keys.SHIFT + Keys.F10)
         waitElement(By.XPATH, '//MenuItem[contains(@Name, "下載")]', doc).click()
-    waitElement(By.XPATH, '/Pane/Pane/Pane/Button[contains(@Name, ".pptx")]', chrome)
+    # waitElement(By.XPATH, '/Pane/Pane/Pane/Button[contains(@Name, ".pptx")]', chrome)
+    waitElement(By.XPATH, '//Pane[@Name="Google Chrome"]//Button[contains(@Name, ".pptx")]', chrome)
     # waitElement(By.XPATH, '//Document[@Name="Downloads"]//DataItem[@AutomationId="title-area"]', chrome)
     # dl = chrome.find_elements_by_xpath('//Document[@Name="Downloads"]//DataItem[@AutomationId="title-area"]')
-    dl = chrome.find_elements_by_xpath('/Pane/Pane/Pane/Button[contains(@Name, ".pptx")]')
+    dl = chrome.find_elements_by_xpath('//Pane[@Name="Google Chrome"]//Button[contains(@Name, ".pptx")]')
     mp = partial(matchP, dl)
     pVals = list(map(mp, pKeys))
     return chrome, pVals, existingChrome
@@ -217,7 +218,7 @@ def downloadPptx(chrome, doc, existingChrome):
 def mergePptx(container, pvals, existingChrome):
     pNames = list(map(lambda x: x.get_attribute('Name'), pvals))
 
-    subject = re.sub(r'^(.+)\.(\w+)( \([0-9]+\))?\.pptx$', r'投影片 \2', pNames[2]).strip()
+    subject = re.sub(r'^(.+)\.([^\s]+)( \([0-9]+\))?\.pptx$', r'投影片 \2', pNames[2]).strip()
     output = re.sub(r'^(.+)_(\w+)\.google簡報檔( \([0-9]+\))?\.pptx$', r'\1_自動合併', pNames[1]).strip()
 
     ppt3 = launchPpt(pKeys[2], pvals[2], container)
@@ -275,7 +276,7 @@ def publishDataSheet(chrome, doc, existingChrome):
         p.click()
         p.send_keys(Keys.ENTER)
     doc = waitElement(By.XPATH, '//Document[contains(@Name, "產生器")]', chrome)
-    doc.find_element_by_xpath('//MenuItem[@Name="資料輸入"]')
+    waitElement(By.XPATH, '//MenuItem[@Name="資料輸入"]', doc)
     doc.find_element_by_xpath('//MenuItem[@Name="檔案"]').click()
     waitElement(By.XPATH, '//MenuItem[@Name="發布到網路 w"]', doc).click()
     d = waitElement(By.XPATH, '//Custom[@Name="發布到網路"]', doc)
@@ -296,7 +297,7 @@ def extractSubject(chrome, doc, existingChrome):
         config = json.load(f)
         dt = [int(x) for x in config['日期'].split('/')]
         sun = getSunday()
-        if dt[0] == sun.month and dt[1] == sun.day:
+        if existingChrome or dt[0] == sun.month and dt[1] == sun.day:
             return config['題目'], config['講員']
     # use final file name on google drive if config not present
     p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pKeys[2], doc)
@@ -325,12 +326,9 @@ def writeWeeklyConfig(sheetId):
 
 
 def youtubeSetup(subject, preach, chrome, doc, existingChrome):
-    scheduleYoutube(subject, preach, '週日禮拜', getSunday(), '上午10:30', chrome, doc, existingChrome)
-    if not existingChrome:
-        closeWindow(chrome)
-        c = d1.find_element_by_name('南園教會 (NGPC) - Chrome')
-        c.click()
-        c.send_keys(Keys.ENTER)
+    scheduleYoutube(subject, preach, '【週日禮拜】', getSunday(), '上午10:30', chrome, doc, existingChrome)
+    if not existingChrome:  # swich to a different page for a clean start
+        chrome.find_element_by_xpath('//Button[@Name="Apps"]').click()
     scheduleYoutube(subject, preach, '禱告會', getThursday(), '下午8:00', chrome, doc, existingChrome)
 
 
@@ -341,24 +339,32 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
     waitElement(By.XPATH, '//Button[@Name="安排直播時間"]', doc).click()
     waitElement(By.XPATH, '//ListItem[contains(@Name,"Video thumbnail.")]', doc).click()
     waitElement(By.XPATH, '//ListItem[contains(@Name,"Video thumbnail.") and contains(@Name, "%s")]' % key, doc).click()
-    doc.find_element_by_xpath('//Button[@Name="沿用設定"]').click()
-    if key == '週日禮拜':
-        t = waitElement(By.XPATH, '//Group[@AutomationId="title-input"]//Edit', doc)
+    doc.find_element_by_xpath('//Button[@Name="REUSE SETTINGS"]').click()
+    # doc.find_element_by_xpath('//Button[@Name="沿用設定"]').click()
+    if key == '【週日禮拜】':
+        t = waitElement(By.XPATH, '//Group[@Name="新增可描述直播內容的標題"]', doc)
         ytSubject = '【週日禮拜】%s《%s》%s牧師' % (date.strftime('%Y.%m.%d'), subject, preach)
         t.click()
         t.send_keys(Keys.CONTROL + 'a')
         t.send_keys(ytSubject)
-    waitElement(By.XPATH, '//MenuItem[contains(@Name, "隱私權")]', doc).click()
-    waitElement(By.XPATH, '//ListItem[@Name="不公開 知道連結的使用者才能觀賞"]', doc).click()
-    waitElement(By.XPATH, '//Group[@AutomationId="date-input"]', doc).click()
+    waitElement(By.XPATH, '//Button[@Name="繼續"]', doc).click()
+    waitElement(By.XPATH, '//Button[@Name="繼續"]', doc).click()
+    waitElement(By.XPATH, '//RadioButton[@Name="不公開"]', doc).click()
+    doc.send_keys(Keys.TAB)
+    doc.send_keys(Keys.ENTER)
+    # waitElement(By.XPATH, '//Group[contains(@AutomationId,"datepicker-trigger")]', doc).click()
     d = waitElement(By.XPATH, '//Group[@Name="輸入日期"]//Edit', doc)
     d.send_keys(Keys.CONTROL + 'a')
     d.send_keys(date.strftime('%Y年%m月%d日'))
     d.send_keys(Keys.ENTER)
-    waitElement(By.XPATH, '//Group[@AutomationId="input"][@Name=""]', doc).click()
+    waitElement(By.XPATH, '//RadioButton[@Name="不公開"]', doc).click()
+    doc.send_keys(Keys.TAB)
+    doc.send_keys(Keys.TAB)
+    doc.send_keys(Keys.ENTER)
+    # waitElement(By.XPATH, '//Group[@AutomationId="time-of-day-trigger"]', doc).click()
     waitElement(By.XPATH, '//ListItem[@Name="%s"]' % time, doc).click()
-    doc.find_element_by_xpath('//Button[@Name="建立"]').click()
-    if key == '週日禮拜':
+    doc.find_element_by_xpath('//Button[@Name="完成"]').click()
+    if key == '【週日禮拜】':
         doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
         chat = waitElement(By.XPATH, '//Group[@Name="寫點東西..."]', doc)
         chat.click()
