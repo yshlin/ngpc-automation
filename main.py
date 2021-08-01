@@ -250,7 +250,7 @@ def customPresentation(ppt, after=0, before=None):
     ppt.find_element_by_xpath('//Window[@Name="自訂放映"]//Button[@Name="新增..."]').click()
     ppt.find_element_by_xpath('//Window[@Name="定義自訂放映"]//Edit[@Name="投影片放映名稱"]').send_keys("主日禮拜")
     slides = ppt.find_elements_by_xpath('//Window[@Name="定義自訂放映"]//ListItem')
-    for slide in slides[10:]:
+    for slide in slides[after:before]:
         slide.click()
         slide.send_keys(Keys.SPACE)
     ppt.find_element_by_xpath('//Window[@Name="定義自訂放映"]//Button[@Name="新增"]').click()
@@ -326,9 +326,9 @@ def writeWeeklyConfig(sheetId):
 
 
 def youtubeSetup(subject, preach, chrome, doc, existingChrome):
-    scheduleYoutube(subject, preach, '【週日禮拜】', getSunday(), '上午10:30', chrome, doc, existingChrome)
-    if not existingChrome:  # swich to a different page for a clean start
-        chrome.find_element_by_xpath('//Button[@Name="Apps"]').click()
+    # scheduleYoutube(subject, preach, '【週日禮拜】', getSunday(), '上午10:30', chrome, doc, existingChrome)
+    # if not existingChrome:  # swich to a different page for a clean start
+    #     chrome.find_element_by_xpath('//Button[@Name="Apps"]').click()
     scheduleYoutube(subject, preach, '禱告會', getThursday(), '下午8:00', chrome, doc, existingChrome)
 
 
@@ -350,6 +350,8 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
     waitElement(By.XPATH, '//Button[@Name="繼續"]', doc).click()
     waitElement(By.XPATH, '//Button[@Name="繼續"]', doc).click()
     waitElement(By.XPATH, '//RadioButton[@Name="不公開"]', doc).click()
+    if key == '【週日禮拜】':
+        doc.send_keys(Keys.TAB)
     doc.send_keys(Keys.TAB)
     doc.send_keys(Keys.ENTER)
     # waitElement(By.XPATH, '//Group[contains(@AutomationId,"datepicker-trigger")]', doc).click()
@@ -358,6 +360,8 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
     d.send_keys(date.strftime('%Y年%m月%d日'))
     d.send_keys(Keys.ENTER)
     waitElement(By.XPATH, '//RadioButton[@Name="不公開"]', doc).click()
+    if key == '【週日禮拜】':
+        doc.send_keys(Keys.TAB)
     doc.send_keys(Keys.TAB)
     doc.send_keys(Keys.TAB)
     doc.send_keys(Keys.ENTER)
@@ -540,10 +544,10 @@ if args.task in taskChoices:
                 uploadMergedPptx(*context)
             resultUrl = getUrl(*context)
         elif 'youtubeSetup' == args.task:
-            context = findPptx()
-            sid = publishDataSheet(*context)
-            writeWeeklyConfig(sid)
-            subprocess.run(['npm', 'run', 'load'], check=True, shell=True, cwd='../ngpc')
+            context = findPptx(True)
+            # sid = publishDataSheet(*context)
+            # writeWeeklyConfig(sid)
+            # subprocess.run(['npm', 'run', 'load'], check=True, shell=True, cwd='../ngpc')
             subj, prch = extractSubject(*context)
             if not args.dry_run:
                 youtubeSetup(subj, prch, *context)
