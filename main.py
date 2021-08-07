@@ -329,6 +329,7 @@ def writeWeeklyConfig(sheetId):
         config['models'][0]['key'] = f'{sheetId}/4'
         json.dump(config, f, indent=2)
         f.truncate()
+        f.flush()
 
 
 def youtubeSetup(subject, preach, chrome, doc, existingChrome):
