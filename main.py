@@ -215,6 +215,11 @@ def downloadPptx(chrome, doc, existingChrome):
     return chrome, pVals, existingChrome
 
 
+def getNumOfSlides(ppt):
+    ind = ppt.find_element_by_xpath('//Button[contains(@Name, "檢視指標 投影片")]')
+    return int(ind.get_attribute('Name').replace('檢視指標 投影片 1 / ', ''))
+
+
 def mergePptx(container, pvals, existingChrome):
     pNames = list(map(lambda x: x.get_attribute('Name'), pvals))
 
@@ -235,9 +240,10 @@ def mergePptx(container, pvals, existingChrome):
     switchWindow(container)
 
     ppt1 = launchPpt(pKeys[0], pvals[0], container)
+    numSlides = getNumOfSlides(ppt1)
     p1 = toggleSlideView(ppt1)
     appendSlides(ppt1, p1)
-    customPresentation(ppt1, 11)
+    customPresentation(ppt1, numSlides)
     saveNewSlide(ppt1, p1, output)
     closeWindow(ppt1)
     switchWindow(container)
