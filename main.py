@@ -326,9 +326,9 @@ def writeWeeklyConfig(sheetId):
 
 
 def youtubeSetup(subject, preach, chrome, doc, existingChrome):
-    # scheduleYoutube(subject, preach, '【週日禮拜】', getSunday(), '上午10:30', chrome, doc, existingChrome)
-    # if not existingChrome:  # swich to a different page for a clean start
-    #     chrome.find_element_by_xpath('//Button[@Name="Apps"]').click()
+    scheduleYoutube(subject, preach, '【週日禮拜】', getSunday(), '上午10:30', chrome, doc, existingChrome)
+    if not existingChrome:  # swich to a different page for a clean start
+        chrome.find_element_by_xpath('//Button[@Name="Apps"]').click()
     scheduleYoutube(subject, preach, '禱告會', getThursday(), '下午8:00', chrome, doc, existingChrome)
 
 
@@ -544,10 +544,10 @@ if args.task in taskChoices:
                 uploadMergedPptx(*context)
             resultUrl = getUrl(*context)
         elif 'youtubeSetup' == args.task:
-            context = findPptx(True)
-            # sid = publishDataSheet(*context)
-            # writeWeeklyConfig(sid)
-            # subprocess.run(['npm', 'run', 'load'], check=True, shell=True, cwd='../ngpc')
+            context = findPptx()
+            sid = publishDataSheet(*context)
+            writeWeeklyConfig(sid)
+            subprocess.run(['npm', 'run', 'load'], check=True, shell=True, cwd='../ngpc')
             subj, prch = extractSubject(*context)
             if not args.dry_run:
                 youtubeSetup(subj, prch, *context)
