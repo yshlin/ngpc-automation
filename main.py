@@ -554,7 +554,7 @@ if args.task in taskChoices:
             context = findPptx()
             sid = publishDataSheet(*context)
             writeWeeklyConfig(sid)
-            subprocess.run(['npm', 'run', 'load'], check=True, shell=True, cwd='../ngpc')
+            subprocess.run(['npm', 'run', 'loadWeekly'], check=True, shell=True, cwd='../ngpc')
             subj, prch = extractSubject(*context)
             if not args.dry_run:
                 youtubeSetup(subj, prch, *context)
