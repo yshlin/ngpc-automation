@@ -283,8 +283,12 @@ def publishDataSheet(chrome, doc, existingChrome):
         p.send_keys(Keys.ENTER)
     doc = waitElement(By.XPATH, '//Document[contains(@Name, "產生器")]', chrome)
     waitElement(By.XPATH, '//MenuItem[@Name="資料輸入"]', doc)
-    doc.find_element_by_xpath('//MenuItem[@Name="檔案"]').click()
-    waitElement(By.XPATH, '//MenuItem[@Name="發布到網路 w"]', doc).click()
+    waitElement(By.XPATH, '//MenuItem[@Name="檔案"]', doc).click()
+    try:
+        waitElement(By.XPATH, '//MenuItem[@Name="發布到網路 w"]', doc).click()
+    except (TimeoutException, NoSuchElementException):
+        doc.send_keys(Keys.ALT+'f')
+        doc.send_keys('w')
     d = waitElement(By.XPATH, '//Custom[@Name="發布到網路"]', doc)
     try:
         d.find_element_by_xpath('//Button[@Name="發布"]').click()
@@ -323,10 +327,10 @@ def getThursday():
 
 
 def writeWeeklyConfig(sheetId):
-    with open(weeklyConfig, 'r+') as f:
+    with open(weeklyConfig, 'r+', encoding='utf-8') as f:
         config = json.load(f)
         f.seek(0)
-        config['models'][0]['key'] = f'{sheetId}/4'
+        config['models'][0]['key'] = f'{sheetId}'
         json.dump(config, f, indent=2)
         f.truncate()
         f.flush()
@@ -356,24 +360,33 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
         t.send_keys(ytSubject)
     waitElement(By.XPATH, '//Button[@Name="繼續"]', doc).click()
     waitElement(By.XPATH, '//Button[@Name="繼續"]', doc).click()
-    waitElement(By.XPATH, '//RadioButton[@Name="不公開"]', doc).click()
-    if key == '【週日禮拜】':
+    oneMoreTab = False
+    try:
+        waitElement(By.XPATH, '//RadioButton[@Name="不公開"]', doc).click()
         doc.send_keys(Keys.TAB)
-    doc.send_keys(Keys.TAB)
-    doc.send_keys(Keys.ENTER)
-    # waitElement(By.XPATH, '//Group[contains(@AutomationId,"datepicker-trigger")]', doc).click()
-    d = waitElement(By.XPATH, '//Group[@Name="輸入日期"]//Edit', doc)
+        doc.send_keys(Keys.ENTER)
+        # waitElement(By.XPATH, '//*[@AutomationId="datepicker-trigger"]', doc).click()
+        d = waitElement(By.XPATH, '//Group[@Name="輸入日期"]//Edit', doc)
+    except TimeoutException:
+        oneMoreTab = True
+        waitElement(By.XPATH, '//RadioButton[@Name="不公開"]', doc).click()
+        doc.send_keys(Keys.TAB)
+        doc.send_keys(Keys.TAB)
+        doc.send_keys(Keys.ENTER)
+        d = waitElement(By.XPATH, '//Group[@Name="輸入日期"]//Edit', doc)
     d.send_keys(Keys.CONTROL + 'a')
     d.send_keys(date.strftime('%Y年%m月%d日'))
     d.send_keys(Keys.ENTER)
+
     waitElement(By.XPATH, '//RadioButton[@Name="不公開"]', doc).click()
-    if key == '【週日禮拜】':
+    if oneMoreTab:
         doc.send_keys(Keys.TAB)
     doc.send_keys(Keys.TAB)
     doc.send_keys(Keys.TAB)
     doc.send_keys(Keys.ENTER)
-    # waitElement(By.XPATH, '//Group[@AutomationId="time-of-day-trigger"]', doc).click()
+    # waitElement(By.XPATH, '//*[@AutomationId="time-of-day-trigger"]', doc).click()
     waitElement(By.XPATH, '//ListItem[@Name="%s"]' % time, doc).click()
+
     doc.find_element_by_xpath('//Button[@Name="完成"]').click()
     if key == '【週日禮拜】':
         doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
@@ -582,6 +595,7 @@ if args.task in taskChoices:
             f'{taskNames[args.task]} 程序執行期間發現並無新的更動需要更新，\n因此自動中斷，煩請檢查要更新的內容再試一次',
             True)
         raise e
-    closeWindow(context[0])
-    print(f'Finished task: {args.task}')
-    root.quit()
+    finally:
+        closeWindow(context[0])
+        print(f'Finished task: {args.task}')
+        root.quit()
