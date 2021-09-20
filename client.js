@@ -7,7 +7,9 @@ const {spawn} = require('child_process');
 let taskState = {};     // making sure only one task is running at a time, duplicated task requests are ignored
 
 function setState(task, state = null) {
-    taskState[task] = state;
+    if (task) {
+        taskState[task] = state;
+    }
 }
 
 function runningTask() {
@@ -35,13 +37,15 @@ function runTask(ev) {
         setState(ev.task);
         let waiting = waitingTask();
         if (waiting) {
-            runTask(waiting)
+            runTask({type: 'task', task: waiting})
         }
     };
     setState(ev.task, 'running');
 
     if (process.env.READ_ONLY) {
-        callback(1);
+        setTimeout(() => {
+            callback(1);
+        }, 10000);
         return;
     }
     let pyCommand = ['./main.py', `--task=${ev.task}`, `--email=${ev.email}`];
