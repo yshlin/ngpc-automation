@@ -282,20 +282,20 @@ def publishDataSheet(chrome, doc, existingChrome):
         p.click()
         p.send_keys(Keys.ENTER)
     doc = waitElement(By.XPATH, '//Document[contains(@Name, "產生器")]', chrome)
-    waitElement(By.XPATH, '//MenuItem[@Name="資料輸入"]', doc)
-    waitElement(By.XPATH, '//MenuItem[@Name="檔案"]', doc).click()
-    try:
-        waitElement(By.XPATH, '//MenuItem[@Name="發布到網路 w"]', doc).click()
-    except (TimeoutException, NoSuchElementException):
-        doc.send_keys(Keys.ALT+'f')
-        doc.send_keys('w')
-    d = waitElement(By.XPATH, '//Custom[@Name="發布到網路"]', doc)
-    try:
-        d.find_element_by_xpath('//Button[@Name="發布"]').click()
-        waitElement(By.XPATH, '//Custom[@Name="Google Drive"]//Button[@Name="OK"]', chrome).click()
-    except NoSuchElementException:
-        print('Published already')
-    d.find_element_by_xpath('//Button[@Name="關閉"]').click()
+    # waitElement(By.XPATH, '//MenuItem[@Name="資料輸入"]', doc)
+    # waitElement(By.XPATH, '//MenuItem[@Name="檔案"]', doc).click()
+    # try:
+    #     waitElement(By.XPATH, '//MenuItem[@Name="發布到網路 w"]', doc).click()
+    # except (TimeoutException, NoSuchElementException):
+    #     doc.send_keys(Keys.ALT+'f')
+    #     doc.send_keys('w')
+    # d = waitElement(By.XPATH, '//Custom[@Name="發布到網路"]', doc)
+    # try:
+    #     d.find_element_by_xpath('//Button[@Name="發布"]').click()
+    #     waitElement(By.XPATH, '//Custom[@Name="Google Drive"]//Button[@Name="OK"]', chrome).click()
+    # except NoSuchElementException:
+    #     print('Published already')
+    # d.find_element_by_xpath('//Button[@Name="關閉"]').click()
     urlBar = chrome.find_element_by_xpath('//Edit[@Name="Address and search bar"]')
     url = urlBar.get_attribute('Value.Value')
     return re.sub(r'(https://)?docs\.google\.com/spreadsheets/d/(.+)/edit(#gid=[0-9]+)?', r'\2', url)
@@ -383,9 +383,11 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
         doc.send_keys(Keys.TAB)
     doc.send_keys(Keys.TAB)
     doc.send_keys(Keys.TAB)
-    doc.send_keys(Keys.ENTER)
+    # doc.send_keys(Keys.ENTER)
     # waitElement(By.XPATH, '//*[@AutomationId="time-of-day-trigger"]', doc).click()
-    waitElement(By.XPATH, '//ListItem[@Name="%s"]' % time, doc).click()
+    # waitElement(By.XPATH, '//ListItem[@Name="%s"]' % time, doc).click()
+    doc.send_keys(Keys.CONTROL + 'a')
+    doc.send_keys(time)
 
     doc.find_element_by_xpath('//Button[@Name="完成"]').click()
     if key == '【週日禮拜】':
