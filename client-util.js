@@ -80,5 +80,18 @@ function putEvents(task, callback, url={}) {
     console.log('PUT request sent')
 }
 
+function getClientCount(callback, url={}) {
+    const req = http.request({
+        host: url.host ? url.host : process.env.HOST,
+        port: url.port ? url.port : process.env.PORT,
+        path: '/clients/count',
+        method: 'GET',
+        headers: {
+            'Api-Key': process.env.APIKEY,
+        },
+    }, callback);
+    req.end();
+    console.log('GET request sent')
+}
 
-module.exports = {postEvents, getEventStream, putEvents}
+module.exports = {postEvents, getEventStream, putEvents, getClientCount}

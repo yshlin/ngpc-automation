@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const {v4: uuid} = require('uuid');
+const {response} = require("express");
 const app = express();
 
 const auth = (req, res, next) => {
@@ -16,10 +17,13 @@ app.use(auth);
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
-//TODO: auth with API key
 
 let clients = [];
 let events = [];
+
+app.get('/clients/count', (request, response) => {
+    response.send({count: clients.length});
+});
 
 app.get('/events/stream', (request, response) => {
     const headers = {
