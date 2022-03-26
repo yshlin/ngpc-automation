@@ -160,7 +160,7 @@ def prepareFolder():
 
 def findPptx(existingChrome=False):
     if not existingChrome:
-        c = d1.find_element_by_name('南園教會 (NGPC) - Chrome')
+        c = d1.find_element_by_name('南園教會 - Chrome')
         c.click()
         c.send_keys(Keys.ENTER)
 
@@ -205,11 +205,11 @@ def downloadPptx(chrome, doc, existingChrome):
         p.click()
         p.send_keys(Keys.SHIFT + Keys.F10)
         waitElement(By.XPATH, '//MenuItem[contains(@Name, "下載")]', doc).click()
-    # waitElement(By.XPATH, '/Pane/Pane/Pane/Button[contains(@Name, ".pptx")]', chrome)
-    waitElement(By.XPATH, '//Pane[@Name="Google Chrome"]//Button[contains(@Name, ".pptx")]', chrome)
+    # waitElement(By.XPATH, '/Pane/Pane/Pane/Button[contains(@Name, ".ppt")]', chrome)
+    waitElement(By.XPATH, '//Pane[@Name="Google Chrome"]//Button[contains(@Name, ".ppt")]', chrome)
     # waitElement(By.XPATH, '//Document[@Name="Downloads"]//DataItem[@AutomationId="title-area"]', chrome)
     # dl = chrome.find_elements_by_xpath('//Document[@Name="Downloads"]//DataItem[@AutomationId="title-area"]')
-    dl = chrome.find_elements_by_xpath('//Pane[@Name="Google Chrome"]//Button[contains(@Name, ".pptx")]')
+    dl = chrome.find_elements_by_xpath('//Pane[@Name="Google Chrome"]//Button[contains(@Name, ".ppt")]')
     mp = partial(matchP, dl)
     pVals = list(map(mp, pKeys))
     return chrome, pVals, existingChrome
@@ -223,7 +223,7 @@ def getNumOfSlides(ppt):
 def mergePptx(container, pvals, existingChrome):
     pNames = list(map(lambda x: x.get_attribute('Name'), pvals))
 
-    subject = re.sub(r'^(.+)\.([^\s]+)( \([0-9]+\))?\.pptx$', r'投影片 \2', pNames[2]).strip()
+    subject = re.sub(r'^(.+)\.([^\s]+)( \([0-9]+\))?\.pptx?$', r'投影片 \2', pNames[2]).strip()
     output = re.sub(r'^(.+)_(\w+)\.google簡報檔( \([0-9]+\))?\.pptx$', r'\1_自動合併', pNames[1]).strip()
 
     ppt3 = launchPpt(pKeys[2], pvals[2], container)
@@ -273,6 +273,10 @@ def uploadMergedPptx(chrome, doc, existingChrome):
     file = owin.find_element_by_xpath('//ListItem[contains(@Name, "自動合併")]')
     file.click()
     file.send_keys(Keys.ENTER)
+    try:
+        waitElement(By.XPATH, '//Button[@Name = "上傳"]', doc).click()
+    except NoSuchElementException:
+        pass
     waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % '自動合併', doc)
 
 
@@ -296,7 +300,7 @@ def publishDataSheet(chrome, doc, existingChrome):
     # except NoSuchElementException:
     #     print('Published already')
     # d.find_element_by_xpath('//Button[@Name="關閉"]').click()
-    urlBar = chrome.find_element_by_xpath('//Edit[@Name="Address and search bar"]')
+    urlBar = chrome.find_element_by_xpath('//Edit[@Name="網址與搜尋列"]')
     url = urlBar.get_attribute('Value.Value')
     return re.sub(r'(https://)?docs\.google\.com/spreadsheets/d/(.+)/edit(#gid=[0-9]+)?', r'\2', url)
 
@@ -339,8 +343,8 @@ def writeWeeklyConfig(sheetId):
 def youtubeSetup(subject, preach, chrome, doc, existingChrome):
     scheduleYoutube(subject, preach, '【週日禮拜】', getSunday(), '上午10:30', chrome, doc, existingChrome)
     if not existingChrome:  # swich to a different page for a clean start
-        chrome.find_element_by_xpath('//Button[@Name="Apps"]').click()
-    scheduleYoutube(subject, preach, '禱告會', getThursday(), '下午8:00', chrome, doc, existingChrome)
+        chrome.find_element_by_xpath('//Button[@Name="應用程式"]').click()
+    # scheduleYoutube(subject, preach, '禱告會', getThursday(), '下午8:00', chrome, doc, existingChrome)
 
 
 def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrome):
@@ -386,8 +390,8 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
     # doc.send_keys(Keys.ENTER)
     # waitElement(By.XPATH, '//*[@AutomationId="time-of-day-trigger"]', doc).click()
     # waitElement(By.XPATH, '//ListItem[@Name="%s"]' % time, doc).click()
-    doc.send_keys(Keys.CONTROL + 'a')
-    doc.send_keys(time)
+    waitElement(By.XPATH, '//Group[@AutomationId="textbox"]', doc).click()
+    waitElement(By.XPATH, '//ListItem[@Name="%s"]' % time, doc).click()
 
     doc.find_element_by_xpath('//Button[@Name="完成"]').click()
     if key == '【週日禮拜】':
@@ -398,7 +402,8 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
         二、線上週報: https://ngpc.tw/weekly/
         三、奉獻表單: https://ngpc.tw/forms/dedication.html''')
         chat.send_keys(Keys.ENTER)
-        waitElement(By.XPATH, f'//Button[@Name="留言動作"]', doc).send_keys(Keys.SPACE)
+        waitElement(By.XPATH, f'//Button[@Name="聊天室活動"]', doc).send_keys(Keys.SPACE)
+        # waitElement(By.XPATH, f'//Button[@Name="留言動作"]', doc).send_keys(Keys.SPACE)
         waitElement(By.XPATH, '//ListItem[@Name="將訊息置頂"]', doc).click()
 
 
@@ -445,7 +450,7 @@ def legacyYoutubeSetup(subject, chrome, doc, existingChrome):
 
 def syncHymnsDb(existingChrome=False):
     if not existingChrome:
-        c = d1.find_element_by_name('南園教會 (NGPC) - Chrome')
+        c = d1.find_element_by_name('南園教會 - Chrome')
         c.click()
         c.send_keys(Keys.ENTER)
 
@@ -467,7 +472,7 @@ def syncHymnsDb(existingChrome=False):
 def setupWindows(screen, existingChrome=False):
     print(screen)
     if not existingChrome:
-        c = d1.find_element_by_name('南園教會 (NGPC) - Chrome')
+        c = d1.find_element_by_name('南園教會 - Chrome')
         c.click()
         c.send_keys(Keys.ENTER)
 
@@ -489,7 +494,7 @@ def sendNotificationEmail(chrome, email, subject, body, ccadmin=False):
         return
     subject = urllib.parse.quote_plus(subject)
     body = urllib.parse.quote_plus(body)
-    urlBar = chrome.find_element_by_xpath('//Edit[@Name="Address and search bar"]')
+    urlBar = chrome.find_element_by_xpath('//Edit[@Name="網址與搜尋列"]')
     cc = f'&cc={os.environ["ADMIN"]}' if ccadmin and 'ADMIN' in os.environ else ''
     urlBar.click()
     urlBar.send_keys(f'https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&to={email}&su={subject}&body={body}{cc}')
@@ -501,7 +506,7 @@ def sendNotificationEmail(chrome, email, subject, body, ccadmin=False):
 
 
 def getUrl(chrome, doc, existingChrome):
-    urlBar = chrome.find_element_by_xpath('//Edit[@Name="Address and search bar"]')
+    urlBar = chrome.find_element_by_xpath('//Edit[@Name="網址與搜尋列"]')
     return urlBar.get_attribute('Value.Value')
 
 

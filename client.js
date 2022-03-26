@@ -63,24 +63,33 @@ function runTask(ev) {
     taskProc.on('close', callback);
 }
 
-const events = getEventStream((evs) => {
-    for (const ev of evs) {
-        if (ev.type !== 'task' || !['hymnsDbSync', 'weeklyPub', 'mergePptx', 'youtubeSetup'].includes(ev.task)) {
-            console.log('Unsupported event');
-            continue;
-        }
-        let running = runningTask();
-        if (running) {
-            if (ev.task !== running) {
-                setState(ev.task, 'waiting');
+function startStream() {
+    return getEventStream((evs) => {
+        for (const ev of evs) {
+            if (ev.type !== 'task' || !['hymnsDbSync', 'weeklyPub', 'mergePptx', 'youtubeSetup'].includes(ev.task)) {
+                console.log('Unsupported event');
+                continue;
             }
-        } else {
-            runTask(ev);
+            let running = runningTask();
+            if (running) {
+                if (ev.task !== running) {
+                    setState(ev.task, 'waiting');
+                }
+            } else {
+                runTask(ev);
+            }
         }
-    }
-});
+    });
+}
+
+let events = startStream();
 
 process.on('SIGINT', () => {
     console.log('Event stream closed.');
     events.close();
 });
+
+setInterval(() => {
+    events.close();
+    events = startStream()
+}, 8 * 60 * 60 * 1000)
