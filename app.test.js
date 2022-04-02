@@ -1,5 +1,5 @@
 const app = require('./app');
-const {postEvents, getEventStream, putEvents, clientReset} = require('./client-util');
+const {postEvents, getEventStream, putEvents, clientReset, getClientCount} = require('./client-util');
 const {testData, chunks} = require('./test-data');
 
 
@@ -33,9 +33,15 @@ describe('Event stream API', () => {
         const events = getEventStream((data) => {
             receivedData = receivedData.concat(data);
             if (3 === receivedData.length) {
-                events.close();
-                expect(receivedData).toEqual(testData)
-                done();
+                getClientCount((res) => {
+                    res.resume();
+                    res.on('data', (data) => {
+                        expect(JSON.parse(data).count).toEqual(1)
+                        events.close();
+                        expect(receivedData).toEqual(testData)
+                        done();
+                    });
+                });
             }
         });
         postEvents(chunks[1], () => {
@@ -43,6 +49,7 @@ describe('Event stream API', () => {
         postEvents(chunks[2], () => {
         });
     });
+
     it('PUT /events', (done) => {
         let p1 = new Promise((resolve) => putEvents(testData[0].task, resolve));
         let p2 = new Promise((resolve) => putEvents(testData[1].task, resolve));
