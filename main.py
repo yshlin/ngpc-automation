@@ -277,6 +277,8 @@ def uploadMergedPptx(chrome, doc, existingChrome):
         waitElement(By.XPATH, '//Button[@Name = "上傳"]', doc).click()
     except NoSuchElementException:
         pass
+    except TimeoutException:
+        pass
     waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % '自動合併', doc)
 
 
@@ -341,13 +343,46 @@ def writeWeeklyConfig(sheetId):
 
 
 def youtubeSetup(subject, preach, chrome, doc, existingChrome):
-    scheduleYoutube(subject, preach, '【週日禮拜】', getSunday(), '上午10:30', chrome, doc, existingChrome)
-    if not existingChrome:  # swich to a different page for a clean start
-        chrome.find_element_by_xpath('//Button[@Name="應用程式"]').click()
+    thumb = downloadYoutubeThumbnail(chrome, doc, existingChrome)
+    scheduleYoutube(subject, preach, '【週日禮拜】', getSunday(), '上午10:30', chrome, doc, existingChrome, thumb)
+    # if not existingChrome:  # swich to a different page for a clean cleanstart
+    #     chrome.find_element_by_xpath('//Button[@Name="應用程式"]').click()
     # scheduleYoutube(subject, preach, '禱告會', getThursday(), '下午8:00', chrome, doc, existingChrome)
 
+def downloadYoutubeThumbnail(chrome, doc, existingChrome):
+    if not existingChrome:
+        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板 - Google 雲端硬碟"]').click()
+        doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
+        try:
+            f = waitElement(By.XPATH, '//DataItem//Text[@Name = "%s"]' % getSunday().strftime('%m%d'), chrome)
+        except NoSuchElementException:
+            f = None
+        if f:
+            f.click()
+            f.send_keys(Keys.ENTER)
+        else:
+            f = doc.find_element_by_xpath('//DataItem//Text[@Name = "過去影音文件備份"]')
+            f.click()
+            f.send_keys(Keys.ENTER)
+            f = waitElement(By.XPATH, '//DataItem//Text[@Name = "%s"]' % getSunday().strftime('%Y'), doc)
+            f.click()
+            f.send_keys(Keys.ENTER)
+            f = waitElement(By.XPATH, '//DataItem//Text[@Name = "%s"]' % getSunday().strftime('%m%d'), doc)
+            f.click()
+            f.send_keys(Keys.ENTER)
 
-def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrome):
+        try:
+            p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % '直播首頁', doc)
+            p.click()
+            p.send_keys(Keys.SHIFT + Keys.F10)
+            waitElement(By.XPATH, '//MenuItem[contains(@Name, "下載")]', doc).click()
+            return True
+        except NoSuchElementException:
+            return False
+        except TimeoutException:
+            return False
+
+def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrome, thumb=False):
     if not existingChrome:
         chrome.find_element_by_xpath('//Button[@Name="直播 - YouTube Studio"]').click()
     doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
@@ -362,6 +397,21 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
         t.click()
         t.send_keys(Keys.CONTROL + 'a')
         t.send_keys(ytSubject)
+        if thumb:
+            doc.send_keys(Keys.TAB)
+            doc.send_keys(Keys.TAB)
+            doc.send_keys(Keys.TAB)
+            doc.send_keys(Keys.TAB)
+            doc.send_keys(Keys.TAB)
+            waitElement(By.XPATH, '//Button[@Name="選項"]', doc).click()
+            waitElement(By.XPATH, '//MenuItem[@Name="變更"]', doc).click()
+
+            owin = waitElement(By.XPATH, '//Window[@Name="開啟"]', chrome)
+            owin.find_element_by_xpath('//TreeItem[@Name="下載 (已釘選)"]').click()
+            file = owin.find_element_by_xpath('//ListItem[contains(@Name, "直播首頁")]')
+            file.click()
+            file.send_keys(Keys.ENTER)
+
     waitElement(By.XPATH, '//Button[@Name="繼續"]', doc).click()
     waitElement(By.XPATH, '//Button[@Name="繼續"]', doc).click()
     oneMoreTab = False
