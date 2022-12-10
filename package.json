@@ -6,6 +6,7 @@
   "scripts": {
     "test": "jest app.test.js",
     "client": "node client.js",
+    "listen": "node listener.js",
     "start": "node server.js"
   },
   "author": "Eddie Lin",
