@@ -71,6 +71,7 @@ def openPpt(key, val, enter):
         val.click()
         if enter:
             val.send_keys(Keys.ENTER)
+    print(key)
     pWin = waitElement(By.XPATH, f'//Window[@ClassName="PPTFrameClass" and contains(@Name, "{key}")]')
     return getDriverFromWin(pWin)
 
@@ -169,7 +170,7 @@ def findPptx(existingChrome=False):
     # dumpPageSource(chrome, "chrome-inspect.xml")
     doc = None
     if not existingChrome:
-        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板 - Google 雲端硬碟"]').click()
+        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板"]').click()
         doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
         try:
             f = waitElement(By.XPATH, '//DataItem//Text[@Name = "%s"]' % getSunday().strftime('%m%d'), chrome)
@@ -351,7 +352,7 @@ def youtubeSetup(subject, preach, chrome, doc, existingChrome):
 
 def downloadYoutubeThumbnail(chrome, doc, existingChrome):
     if not existingChrome:
-        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板 - Google 雲端硬碟"]').click()
+        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板"]').click()
         doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
         try:
             f = waitElement(By.XPATH, '//DataItem//Text[@Name = "%s"]' % getSunday().strftime('%m%d'), chrome)
@@ -384,15 +385,16 @@ def downloadYoutubeThumbnail(chrome, doc, existingChrome):
 
 def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrome, thumb=False):
     if not existingChrome:
-        chrome.find_element_by_xpath('//Button[@Name="直播 - YouTube Studio"]').click()
+        chrome.find_element_by_xpath('//Button[@Name="直播"]').click()
     doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
     waitElement(By.XPATH, '//Button[@Name="安排直播時間"]', doc).click()
+    waitElement(By.XPATH, '//Button[@Name="REUSE SETTINGS"]', doc).click()
     waitElement(By.XPATH, '//ListItem[contains(@Name,"Video thumbnail.")]', doc).click()
     waitElement(By.XPATH, '//ListItem[contains(@Name,"Video thumbnail.") and contains(@Name, "%s")]' % key, doc).click()
     doc.find_element_by_xpath('//Button[@Name="REUSE SETTINGS"]').click()
     # doc.find_element_by_xpath('//Button[@Name="沿用設定"]').click()
     if key == '【週日禮拜】':
-        t = waitElement(By.XPATH, '//Group[@Name="新增可描述直播內容的標題"]', doc)
+        t = waitElement(By.XPATH, '//Group[contains(@Name,"新增可描述直播內容的標題")]', doc)
         ytSubject = '【週日禮拜】%s《%s》%s牧師' % (date.strftime('%Y.%m.%d'), subject, preach)
         t.click()
         t.send_keys(Keys.CONTROL + 'a')
@@ -403,8 +405,12 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
             doc.send_keys(Keys.TAB)
             doc.send_keys(Keys.TAB)
             doc.send_keys(Keys.TAB)
-            waitElement(By.XPATH, '//Button[@Name="選項"]', doc).click()
-            waitElement(By.XPATH, '//MenuItem[@Name="變更"]', doc).click()
+            doc.send_keys(Keys.ENTER)
+            #try:
+            #    waitElement(By.XPATH, '//Button[@Name="上傳縮圖"]', doc).click()
+            #except TimeoutException:
+            #    waitElement(By.XPATH, '//Button[@Name="選項"]', doc).click()
+            #    waitElement(By.XPATH, '//MenuItem[@Name="變更"]', doc).click()
 
             owin = waitElement(By.XPATH, '//Window[@Name="開啟"]', chrome)
             owin.find_element_by_xpath('//TreeItem[@Name="下載 (已釘選)"]').click()
@@ -461,7 +467,7 @@ def legacyYoutubeSetup(subject, chrome, doc, existingChrome):
     ytSubject = '【週日禮拜】%s《%s》李俊佑牧師' % (getSunday().strftime('%Y.%m.%d'), subject)
 
     if not existingChrome:
-        chrome.find_element_by_xpath('//Button[@Name="直播 - YouTube Studio"]').click()
+        chrome.find_element_by_xpath('//Button[@Name="直播"]').click()
     doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
     waitElement(By.XPATH, '//Button[@Name="串流設定說明"]', doc)
     waitElement(By.XPATH, '//Button[@Name="編輯"]', doc).click()
@@ -507,7 +513,7 @@ def syncHymnsDb(existingChrome=False):
     cWin = waitElement(By.XPATH, '//Pane[@ClassName="Chrome_WidgetWin_1"]')
     chrome = getDriverFromWin(cWin)
     if not existingChrome:
-        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板 - Google 雲端硬碟"]').click()
+        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板"]').click()
         doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
         p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % '詩歌資料庫', doc)
         p.click()
@@ -529,7 +535,7 @@ def setupWindows(screen, existingChrome=False):
     cWin = waitElement(By.XPATH, '//Pane[@ClassName="Chrome_WidgetWin_1"]')
     print(cWin.size)
     chrome = getDriverFromWin(cWin)
-    # chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板 - Google 雲端硬碟"]').click()
+    # chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板"]').click()
     # doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
     cWin.set_window_size(round(screen['width'] / 3), round(screen['height'] / 2))
     cWin.set_window_position(round(screen['width'] * 2 / 3), 0)
