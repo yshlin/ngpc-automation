@@ -9,7 +9,7 @@ async function runTask(task, email) {
     console.log('Running task ' + task)
     let pyCommand = ['./main.py', `--task=${task}`, `--email=${email}`];
     // if (process.env.DRY_RUN) {
-    pyCommand.push('--dry-run')
+    // pyCommand.push('--dry-run')
     // }
     console.log(`Running python command "${pyCommand}"`);
     const child = spawn('python', pyCommand);
