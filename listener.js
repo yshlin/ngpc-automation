@@ -2,6 +2,7 @@ const axios = require('axios');
 const {spawn} = require('child_process');
 const VALID_TASKS = ['youtubeSetup', 'weeklyPub', 'mergePptx', 'hymnsDbSync']
 const API_URL = 'https://script.google.com/macros/s/AKfycbyJh3C9ucRKCw4bKzTfHnVwhrvwP39yGIlFIL6D25jTYTTVlXgy0QVOuPxuBQ6s84_b/exec';
+const POLLING_INTERVAL = 60000;
 
 console.log('Polling started');
 
@@ -45,6 +46,7 @@ async function init() {
         let response = await axios.post(API_URL);
         let tasks = response.data;
         let contact = response.data.contact;
+        //console.log(tasks);
         for (const [k, v] of Object.entries(tasks)) {
             if (VALID_TASKS.includes(k) && true === v) {
                 try {
@@ -56,7 +58,7 @@ async function init() {
                 }
             }
         }
-        await sleep(15000)
+        await sleep(POLLING_INTERVAL)
     }
 }
 

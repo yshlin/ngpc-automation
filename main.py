@@ -161,7 +161,7 @@ def prepareFolder():
 
 def findPptx(existingChrome=False):
     if not existingChrome:
-        c = d1.find_element_by_name('南園教會 - Chrome')
+        c = d1.find_element_by_name('Eddie (eddie.lin@ngpc.tw) - Chrome')
         c.click()
         c.send_keys(Keys.ENTER)
 
@@ -170,8 +170,8 @@ def findPptx(existingChrome=False):
     # dumpPageSource(chrome, "chrome-inspect.xml")
     doc = None
     if not existingChrome:
-        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板"]').click()
-        doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
+        chrome.find_element_by_xpath('//Button[@Name="影音製作"]').click()
+        doc = waitElement(By.XPATH, '//Document[@Name="影音製作 - Google 雲端硬碟"]', chrome)
         try:
             f = waitElement(By.XPATH, '//DataItem//Text[@Name = "%s"]' % getSunday().strftime('%m%d'), chrome)
         except NoSuchElementException:
@@ -207,10 +207,11 @@ def downloadPptx(chrome, doc, existingChrome):
         p.send_keys(Keys.SHIFT + Keys.F10)
         waitElement(By.XPATH, '//MenuItem[contains(@Name, "下載")]', doc).click()
     # waitElement(By.XPATH, '/Pane/Pane/Pane/Button[contains(@Name, ".ppt")]', chrome)
-    waitElement(By.XPATH, '//Pane[@Name="Google Chrome"]//Button[contains(@Name, ".ppt")]', chrome)
+
+    waitElement(By.XPATH, '/Pane//Button[contains(@Name, ".ppt")]', chrome)
     # waitElement(By.XPATH, '//Document[@Name="Downloads"]//DataItem[@AutomationId="title-area"]', chrome)
     # dl = chrome.find_elements_by_xpath('//Document[@Name="Downloads"]//DataItem[@AutomationId="title-area"]')
-    dl = chrome.find_elements_by_xpath('//Pane[@Name="Google Chrome"]//Button[contains(@Name, ".ppt")]')
+    dl = chrome.find_elements_by_xpath('/Pane//Button[contains(@Name, ".ppt")]')
     mp = partial(matchP, dl)
     pVals = list(map(mp, pKeys))
     return chrome, pVals, existingChrome
@@ -305,7 +306,7 @@ def publishDataSheet(chrome, doc, existingChrome):
     # d.find_element_by_xpath('//Button[@Name="關閉"]').click()
     urlBar = chrome.find_element_by_xpath('//Edit[@Name="網址與搜尋列"]')
     url = urlBar.get_attribute('Value.Value')
-    return re.sub(r'(https://)?docs\.google\.com/spreadsheets/d/(.+)/edit(#gid=[0-9]+)?', r'\2', url)
+    return re.sub(r'(https://)?docs\.google\.com/spreadsheets/d/(.+)/edit(\?gid=[0-9]+)?(#gid=[0-9]+)?', r'\2', url)
 
 
 def extractSubject(chrome, doc, existingChrome):
@@ -315,7 +316,7 @@ def extractSubject(chrome, doc, existingChrome):
         dt = [int(x) for x in config['日期'].split('/')]
         sun = getSunday()
         if existingChrome or dt[0] == sun.month and dt[1] == sun.day:
-            return config['題目'], config['講員']
+            return config['題目'], config['講員'] + config['頭銜']
     # use final file name on google drive if config not present
     p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % pKeys[2], doc)
     return re.sub(r'^(.+)\.(\w+)( \([0-9]+\))?\.pptx$', r'\2', p.get_attribute('Name')).strip()
@@ -334,6 +335,7 @@ def getThursday():
 
 
 def writeWeeklyConfig(sheetId):
+    print(f'write weekly config: {weeklyConfig}')
     with open(weeklyConfig, 'r+', encoding='utf-8') as f:
         config = json.load(f)
         f.seek(0)
@@ -352,8 +354,8 @@ def youtubeSetup(subject, preach, chrome, doc, existingChrome):
 
 def downloadYoutubeThumbnail(chrome, doc, existingChrome):
     if not existingChrome:
-        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板"]').click()
-        doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
+        chrome.find_element_by_xpath('//Button[@Name="影音製作"]').click()
+        doc = waitElement(By.XPATH, '//Document[@Name="影音製作 - Google 雲端硬碟"]', chrome)
         try:
             f = waitElement(By.XPATH, '//DataItem//Text[@Name = "%s"]' % getSunday().strftime('%m%d'), chrome)
         except NoSuchElementException:
@@ -388,14 +390,14 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
         chrome.find_element_by_xpath('//Button[@Name="直播"]').click()
     doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
     waitElement(By.XPATH, '//Button[@Name="安排直播時間"]', doc).click()
-    waitElement(By.XPATH, '//Button[@Name="REUSE SETTINGS"]', doc).click()
+    waitElement(By.XPATH, '//Button[@Name="沿用設定"]', doc).click()
     waitElement(By.XPATH, '//ListItem[contains(@Name,"Video thumbnail.")]', doc).click()
     waitElement(By.XPATH, '//ListItem[contains(@Name,"Video thumbnail.") and contains(@Name, "%s")]' % key, doc).click()
-    doc.find_element_by_xpath('//Button[@Name="REUSE SETTINGS"]').click()
-    # doc.find_element_by_xpath('//Button[@Name="沿用設定"]').click()
+    # doc.find_element_by_xpath('//Button[@Name="REUSE SETTINGS"]').click()
+    doc.find_element_by_xpath('//Button[@Name="沿用設定"]').click()
     if key == '【週日禮拜】':
         t = waitElement(By.XPATH, '//Group[contains(@Name,"新增可描述直播內容的標題")]', doc)
-        ytSubject = '【週日禮拜】%s《%s》%s牧師' % (date.strftime('%Y.%m.%d'), subject, preach)
+        ytSubject = '【週日禮拜】%s《%s》%s' % (date.strftime('%Y.%m.%d'), subject, preach)
         t.click()
         t.send_keys(Keys.CONTROL + 'a')
         t.send_keys(ytSubject)
@@ -414,7 +416,7 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
 
             owin = waitElement(By.XPATH, '//Window[@Name="開啟"]', chrome)
             owin.find_element_by_xpath('//TreeItem[@Name="下載 (已釘選)"]').click()
-            file = owin.find_element_by_xpath('//ListItem[contains(@Name, "直播首頁")]')
+            file = owin.find_element_by_xpath('//ListItem[contains(@Name, "直播封面")]')
             file.click()
             file.send_keys(Keys.ENTER)
 
@@ -452,13 +454,14 @@ def scheduleYoutube(subject, preach, key, date, time, chrome, doc, existingChrom
     doc.find_element_by_xpath('//Button[@Name="完成"]').click()
     if key == '【週日禮拜】':
         doc = waitElement(By.XPATH, '//Document[@Name="直播 - YouTube Studio"]', chrome)
-        chat = waitElement(By.XPATH, '//Group[@Name="寫點東西..."]', doc)
+        chat = waitElement(By.XPATH, '//Group[@Name="聊天..."]', doc)
         chat.click()
         chat.send_keys('''【公告】 一、請大家在此留言簽到~
         二、線上週報: https://ngpc.tw/weekly/
         三、奉獻表單: https://ngpc.tw/forms/dedication.html''')
         chat.send_keys(Keys.ENTER)
-        waitElement(By.XPATH, f'//Button[@Name="聊天室活動"]', doc).send_keys(Keys.SPACE)
+        waitElement(By.XPATH, f'//Button[@Name="聊天室活動"]', doc).click()
+        # waitElement(By.XPATH, f'//Button[@Name="聊天室活動"]', doc).send_keys(Keys.SPACE)
         # waitElement(By.XPATH, f'//Button[@Name="留言動作"]', doc).send_keys(Keys.SPACE)
         waitElement(By.XPATH, '//ListItem[@Name="將訊息置頂"]', doc).click()
 
@@ -506,15 +509,15 @@ def legacyYoutubeSetup(subject, chrome, doc, existingChrome):
 
 def syncHymnsDb(existingChrome=False):
     if not existingChrome:
-        c = d1.find_element_by_name('南園教會 - Chrome')
+        c = d1.find_element_by_name('Eddie (eddie.lin@ngpc.tw) - Chrome')
         c.click()
         c.send_keys(Keys.ENTER)
 
     cWin = waitElement(By.XPATH, '//Pane[@ClassName="Chrome_WidgetWin_1"]')
     chrome = getDriverFromWin(cWin)
     if not existingChrome:
-        chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板"]').click()
-        doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
+        chrome.find_element_by_xpath('//Button[@Name="影音製作"]').click()
+        doc = waitElement(By.XPATH, '//Document[@Name="影音製作 - Google 雲端硬碟"]', chrome)
         p = waitElement(By.XPATH, '//DataItem//Text[contains(@Name, "%s")]' % '詩歌資料庫', doc)
         p.click()
         p.send_keys(Keys.ENTER)
@@ -528,15 +531,15 @@ def syncHymnsDb(existingChrome=False):
 def setupWindows(screen, existingChrome=False):
     print(screen)
     if not existingChrome:
-        c = d1.find_element_by_name('南園教會 - Chrome')
+        c = d1.find_element_by_name('Eddie (eddie.lin@ngpc.tw) - Chrome')
         c.click()
         c.send_keys(Keys.ENTER)
 
     cWin = waitElement(By.XPATH, '//Pane[@ClassName="Chrome_WidgetWin_1"]')
     print(cWin.size)
     chrome = getDriverFromWin(cWin)
-    # chrome.find_element_by_xpath('//Button[@Name="影音自動化樣板"]').click()
-    # doc = waitElement(By.XPATH, '//Document[@Name="影音自動化樣板 - Google 雲端硬碟"]', chrome)
+    # chrome.find_element_by_xpath('//Button[@Name="影音製作"]').click()
+    # doc = waitElement(By.XPATH, '//Document[@Name="影音製作 - Google 雲端硬碟"]', chrome)
     cWin.set_window_size(round(screen['width'] / 3), round(screen['height'] / 2))
     cWin.set_window_position(round(screen['width'] * 2 / 3), 0)
 
@@ -556,7 +559,7 @@ def sendNotificationEmail(chrome, email, subject, body, ccadmin=False):
     urlBar.send_keys(f'https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&to={email}&su={subject}&body={body}{cc}')
     # urlBar.send_keys(f'mailto:{email}?subject={subject}&body={body}{cc}')
     urlBar.send_keys(Keys.ENTER)
-    waitElement(By.XPATH, '//Document[@Name="撰寫郵件 - ngpc0706@gmail.com - Gmail"]', chrome).send_keys(
+    waitElement(By.XPATH, '//Document[@Name="撰寫郵件 - eddie.lin@ngpc.tw - 南園長老教會 郵件"]', chrome).send_keys(
         Keys.CONTROL + Keys.ENTER)
     time.sleep(5)
 
@@ -614,6 +617,7 @@ if args.task in taskChoices:
         if 'weeklyPub' == args.task:
             context = findPptx()
             sid = publishDataSheet(*context)
+            print(f'sid: {sid}')
             writeWeeklyConfig(sid)
             subprocess.run(['npm', 'run', 'prepare'], check=True, shell=True, cwd='../ngpc')
             if not args.dry_run:
